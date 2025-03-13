@@ -30,9 +30,9 @@ public class IncomeCategoryController {
     }
     
     @GetMapping("/{id}")
-    public ResponseEntity<IncomeCategoryDTO> getCategoryById(@PathVariable("id") Integer id) {
-        return ResponseEntity.ok(incomeCategoryService.getCategoryById(id));
-    }
+public ResponseEntity<IncomeCategoryDTO> getCategoryById(@PathVariable("id") Integer id) {
+    return ResponseEntity.ok(incomeCategoryService.getCategoryById(id));
+}
     
     @PostMapping
     @PreAuthorize("hasRole('admin')")
@@ -41,17 +41,17 @@ public class IncomeCategoryController {
     }
     
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('admin')")
-    public ResponseEntity<IncomeCategoryDTO> updateCategory(
-            @PathVariable Integer id, 
-            @Valid @RequestBody IncomeCategoryRequest request) {
-        return ResponseEntity.ok(incomeCategoryService.updateCategory(id, request));
-    }
-    
-    @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('admin')")
-    public ResponseEntity<Void> deleteCategory(@PathVariable("id") Integer id) {
-        incomeCategoryService.deleteCategory(id);
-        return ResponseEntity.noContent().build();
-    }
+@PreAuthorize("hasRole('admin')")
+public ResponseEntity<IncomeCategoryDTO> updateCategory(
+        @PathVariable("id") Integer id, 
+        @Valid @RequestBody IncomeCategoryRequest request) {
+    return ResponseEntity.ok(incomeCategoryService.updateCategory(id, request));
+}
+
+@DeleteMapping("/{id}")
+@PreAuthorize("hasRole('admin')")
+public ResponseEntity<Void> deleteCategory(@PathVariable("id") Integer id) {
+    incomeCategoryService.deleteCategory(id);
+    return ResponseEntity.noContent().build();
+}
 }
