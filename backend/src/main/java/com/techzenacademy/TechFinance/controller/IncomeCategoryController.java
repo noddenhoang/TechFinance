@@ -30,7 +30,7 @@ public class IncomeCategoryController {
     }
     
     @GetMapping("/{id}")
-    public ResponseEntity<IncomeCategoryDTO> getCategoryById(@PathVariable Integer id) {
+    public ResponseEntity<IncomeCategoryDTO> getCategoryById(@PathVariable("id") Integer id) {
         return ResponseEntity.ok(incomeCategoryService.getCategoryById(id));
     }
     
@@ -50,7 +50,7 @@ public class IncomeCategoryController {
     
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('admin')")
-    public ResponseEntity<Void> deleteCategory(@PathVariable Integer id) {
+    public ResponseEntity<Void> deleteCategory(@PathVariable("id") Integer id) {
         incomeCategoryService.deleteCategory(id);
         return ResponseEntity.noContent().build();
     }
