@@ -2,8 +2,10 @@ package com.techzenacademy.TechFinance.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.techzenacademy.TechFinance.dto.CategoryBreakdownDTO;
+import com.techzenacademy.TechFinance.dto.CategoryComparisonDTO;
 import com.techzenacademy.TechFinance.dto.CategoryReportDTO;
 import com.techzenacademy.TechFinance.dto.MonthlyFinancialReportDTO;
+import com.techzenacademy.TechFinance.dto.PeriodComparisonReportDTO;
 import com.techzenacademy.TechFinance.entity.FinancialReport;
 import com.techzenacademy.TechFinance.entity.IncomeTransaction;
 import com.techzenacademy.TechFinance.entity.ExpenseTransaction;
@@ -21,6 +23,7 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -203,5 +206,201 @@ public class FinancialReportService {
         } catch (Exception e) {
             return BigDecimal.ZERO;
         }
+    }
+    
+    public PeriodComparisonReportDTO comparePeriods(Integer currentYear, Integer currentMonth, 
+                                              Integer previousYear, Integer previousMonth) {
+        // Validate inputs
+        if (currentYear < 2000 || currentMonth < 1 || currentMonth > 12 ||
+            previousYear < 2000 || previousMonth < 1 || previousMonth > 12) {
+            throw new IllegalArgumentException("Invalid year or month");
+        }
+        
+        PeriodComparisonReportDTO report = new PeriodComparisonReportDTO();
+        report.setCurrentYear(currentYear);
+        report.setCurrentMonth(currentMonth);
+        report.setPreviousYear(previousYear);
+        report.setPreviousMonth(previousMonth);
+        
+        // Get category breakdowns for both periods
+        CategoryReportDTO currentPeriod = getCategoryBreakdown(currentYear, currentMonth);
+        CategoryReportDTO previousPeriod = getCategoryBreakdown(previousYear, previousMonth);
+        
+        // Calculate totals from the current period
+        BigDecimal currentTotalIncome = calculateTotalFromCategories(currentPeriod.getIncomeCategories());
+        BigDecimal currentTotalExpense = calculateTotalFromCategories(currentPeriod.getExpenseCategories());
+        
+        // Calculate totals from the previous period
+        BigDecimal previousTotalIncome = calculateTotalFromCategories(previousPeriod.getIncomeCategories());
+        BigDecimal previousTotalExpense = calculateTotalFromCategories(previousPeriod.getExpenseCategories());
+        
+        // Set total values
+        report.setCurrentTotalIncome(currentTotalIncome);
+        report.setPreviousTotalIncome(previousTotalIncome);
+        report.setCurrentTotalExpense(currentTotalExpense);
+        report.setPreviousTotalExpense(previousTotalExpense);
+        
+        // Calculate differences and percentage changes
+        report.setIncomeDifference(currentTotalIncome.subtract(previousTotalIncome));
+        report.setExpenseDifference(currentTotalExpense.subtract(previousTotalExpense));
+        
+        if (previousTotalIncome.compareTo(BigDecimal.ZERO) != 0) {
+            BigDecimal incomeChange = report.getIncomeDifference()
+                .divide(previousTotalIncome, 4, RoundingMode.HALF_UP)
+                .multiply(new BigDecimal("100"));
+            report.setIncomePercentageChange(incomeChange);
+        } else if (currentTotalIncome.compareTo(BigDecimal.ZERO) > 0) {
+            report.setIncomePercentageChange(new BigDecimal("100")); // 100% increase from zero
+        } else {
+            report.setIncomePercentageChange(BigDecimal.ZERO);
+        }
+        
+        if (previousTotalExpense.compareTo(BigDecimal.ZERO) != 0) {
+            BigDecimal expenseChange = report.getExpenseDifference()
+                .divide(previousTotalExpense, 4, RoundingMode.HALF_UP)
+                .multiply(new BigDecimal("100"));
+            report.setExpensePercentageChange(expenseChange);
+        } else if (currentTotalExpense.compareTo(BigDecimal.ZERO) > 0) {
+            report.setExpensePercentageChange(new BigDecimal("100")); // 100% increase from zero
+        } else {
+            report.setExpensePercentageChange(BigDecimal.ZERO);
+        }
+        
+        // Compare income categories
+        List<CategoryComparisonDTO> incomeComparisons = 
+            compareCategories(currentPeriod.getIncomeCategories(), previousPeriod.getIncomeCategories(),
+                            currentTotalIncome, previousTotalIncome);
+        report.setIncomeCategories(incomeComparisons);
+        
+        // Compare expense categories
+        List<CategoryComparisonDTO> expenseComparisons = 
+            compareCategories(currentPeriod.getExpenseCategories(), previousPeriod.getExpenseCategories(),
+                            currentTotalExpense, previousTotalExpense);
+        report.setExpenseCategories(expenseComparisons);
+        
+        return report;
+    }
+    
+    private BigDecimal calculateTotalFromCategories(List<CategoryBreakdownDTO> categories) {
+        BigDecimal total = BigDecimal.ZERO;
+        for (CategoryBreakdownDTO category : categories) {
+            total = total.add(category.getAmount());
+        }
+        return total;
+    }
+    
+    private List<CategoryComparisonDTO> compareCategories(List<CategoryBreakdownDTO> currentCategories, 
+                                                         List<CategoryBreakdownDTO> previousCategories,
+                                                         BigDecimal currentTotal,
+                                                         BigDecimal previousTotal) {
+        Map<String, CategoryBreakdownDTO> previousCategoryMap = new HashMap<>();
+        for (CategoryBreakdownDTO category : previousCategories) {
+            previousCategoryMap.put(category.getCategoryName(), category);
+        }
+        
+        List<CategoryComparisonDTO> comparisons = new ArrayList<>();
+        
+        // Process all current categories
+        for (CategoryBreakdownDTO currentCategory : currentCategories) {
+            CategoryComparisonDTO comparison = new CategoryComparisonDTO();
+            comparison.setCategoryName(currentCategory.getCategoryName());
+            comparison.setCurrentPeriodAmount(currentCategory.getAmount());
+            comparison.setCurrentPeriodPercentage(currentCategory.getPercentage());
+            
+            // Find matching category in previous period
+            CategoryBreakdownDTO previousCategory = previousCategoryMap.get(currentCategory.getCategoryName());
+            if (previousCategory != null) {
+                comparison.setPreviousPeriodAmount(previousCategory.getAmount());
+                comparison.setPreviousPeriodPercentage(previousCategory.getPercentage());
+                comparison.setDifference(currentCategory.getAmount().subtract(previousCategory.getAmount()));
+                
+                if (previousCategory.getAmount().compareTo(BigDecimal.ZERO) != 0) {
+                    BigDecimal percentageChange = comparison.getDifference()
+                        .divide(previousCategory.getAmount(), 4, RoundingMode.HALF_UP)
+                        .multiply(new BigDecimal("100"));
+                    comparison.setPercentageChange(percentageChange);
+                } else if (currentCategory.getAmount().compareTo(BigDecimal.ZERO) > 0) {
+                    comparison.setPercentageChange(new BigDecimal("100")); // 100% increase from zero
+                } else {
+                    comparison.setPercentageChange(BigDecimal.ZERO);
+                }
+                
+                // Remove from map to track processed categories
+                previousCategoryMap.remove(currentCategory.getCategoryName());
+            } else {
+                // Category did not exist in previous period
+                comparison.setPreviousPeriodAmount(BigDecimal.ZERO);
+                comparison.setPreviousPeriodPercentage(BigDecimal.ZERO);
+                comparison.setDifference(currentCategory.getAmount());
+                // New category means 100% increase if amount > 0
+                if (currentCategory.getAmount().compareTo(BigDecimal.ZERO) > 0) {
+                    comparison.setPercentageChange(new BigDecimal("100"));
+                } else {
+                    comparison.setPercentageChange(BigDecimal.ZERO);
+                }
+            }
+            
+            comparisons.add(comparison);
+        }
+        
+        // Add remaining previous categories (those that don't exist in current period)
+        for (Map.Entry<String, CategoryBreakdownDTO> entry : previousCategoryMap.entrySet()) {
+            CategoryBreakdownDTO previousCategory = entry.getValue();
+            CategoryComparisonDTO comparison = new CategoryComparisonDTO();
+            comparison.setCategoryName(previousCategory.getCategoryName());
+            comparison.setCurrentPeriodAmount(BigDecimal.ZERO);
+            comparison.setCurrentPeriodPercentage(BigDecimal.ZERO);
+            comparison.setPreviousPeriodAmount(previousCategory.getAmount());
+            comparison.setPreviousPeriodPercentage(previousCategory.getPercentage());
+            comparison.setDifference(BigDecimal.ZERO.subtract(previousCategory.getAmount()));
+            comparison.setPercentageChange(new BigDecimal("-100")); // 100% decrease (category removed)
+            
+            comparisons.add(comparison);
+        }
+        
+        // Sort by current period amount descending
+        comparisons.sort(Comparator.comparing(CategoryComparisonDTO::getCurrentPeriodAmount).reversed());
+        
+        return comparisons;
+    }
+    
+    public CategoryReportDTO getCategoryBreakdownWithFilters(Integer year, Integer month, 
+                                                          boolean activeOnly, String sortBy) {
+        CategoryReportDTO report = getCategoryBreakdown(year, month);
+        List<CategoryBreakdownDTO> incomeCategories = report.getIncomeCategories();
+        List<CategoryBreakdownDTO> expenseCategories = report.getExpenseCategories();
+        
+        // Filter out inactive categories if required
+        if (activeOnly) {
+            incomeCategories = incomeCategories.stream()
+                .filter(cat -> cat.getAmount().compareTo(BigDecimal.ZERO) > 0)
+                .toList();
+            
+            expenseCategories = expenseCategories.stream()
+                .filter(cat -> cat.getAmount().compareTo(BigDecimal.ZERO) > 0)
+                .toList();
+        }
+        
+        // Sort categories based on requested sort field
+        Comparator<CategoryBreakdownDTO> comparator;
+        if (sortBy.equalsIgnoreCase("percentage")) {
+            comparator = Comparator.comparing(CategoryBreakdownDTO::getPercentage).reversed();
+        } else if (sortBy.equalsIgnoreCase("name")) {
+            comparator = Comparator.comparing(CategoryBreakdownDTO::getCategoryName);
+        } else { // Default to amount
+            comparator = Comparator.comparing(CategoryBreakdownDTO::getAmount).reversed();
+        }
+        
+        List<CategoryBreakdownDTO> sortedIncomeCategories = new ArrayList<>(incomeCategories);
+        sortedIncomeCategories.sort(comparator);
+        
+        List<CategoryBreakdownDTO> sortedExpenseCategories = new ArrayList<>(expenseCategories);
+        sortedExpenseCategories.sort(comparator);
+        
+        CategoryReportDTO filteredReport = new CategoryReportDTO();
+        filteredReport.setIncomeCategories(sortedIncomeCategories);
+        filteredReport.setExpenseCategories(sortedExpenseCategories);
+        
+        return filteredReport;
     }
 }
