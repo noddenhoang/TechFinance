@@ -9,6 +9,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.Date;  // Add this import
+
 @Service
 public class AuthService {
 
@@ -23,7 +25,10 @@ public class AuthService {
     
     @Autowired
     private JwtService jwtService;
-    
+
+    @Autowired
+    private TokenBlacklistService tokenBlacklistService;
+
     public String login(String username, String password) {
         Authentication authentication = authenticationManager.authenticate(
             new UsernamePasswordAuthenticationToken(username, password)
@@ -45,5 +50,19 @@ public class AuthService {
         // Encrypt password before saving
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         userRepository.save(user);
+    }
+
+    /**
+     * Log out a user by invalidating their token
+     * @param token The JWT token to invalidate
+     */
+    public void logout(String token) {
+        if (token != null && token.startsWith("Bearer ")) {
+            token = token.substring(7);
+        }
+        
+        // Extract expiration date from token to use for blacklist cleanup
+        Date expiryDate = jwtService.extractExpiration(token);
+        tokenBlacklistService.blacklistToken(token, expiryDate);
     }
 }
