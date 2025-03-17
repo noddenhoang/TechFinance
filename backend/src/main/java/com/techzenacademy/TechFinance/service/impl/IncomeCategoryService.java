@@ -85,12 +85,10 @@ public class IncomeCategoryService {
     }
     
     public void deleteCategory(Integer id) {
-        IncomeCategory category = incomeCategoryRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Income category not found with id: " + id));
-        
-        // Soft delete - just mark as inactive
-        category.setIsActive(false);
-        incomeCategoryRepository.save(category);
+        if (!incomeCategoryRepository.existsById(id)) {
+            throw new EntityNotFoundException("Income category not found with id: " + id);
+        }
+        incomeCategoryRepository.deleteById(id);
     }
     
     private IncomeCategoryDTO mapToDTO(IncomeCategory category) {

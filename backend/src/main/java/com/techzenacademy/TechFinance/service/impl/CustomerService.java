@@ -105,12 +105,10 @@ public class CustomerService {
     }
     
     public void deleteCustomer(Integer id) {
-        Customer customer = customerRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Customer not found with id: " + id));
-        
-        // Soft delete - just mark as inactive
-        customer.setIsActive(false);
-        customerRepository.save(customer);
+        if (!customerRepository.existsById(id)) {
+            throw new EntityNotFoundException("Customer not found with id: " + id);
+        }
+        customerRepository.deleteById(id);
     }
     
     private CustomerDTO mapToDTO(Customer customer) {

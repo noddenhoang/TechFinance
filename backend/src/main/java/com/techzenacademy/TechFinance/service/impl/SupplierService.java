@@ -83,12 +83,10 @@ public class SupplierService {
     }
     
     public void deleteSupplier(Integer id) {
-        Supplier supplier = supplierRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Supplier not found with id: " + id));
-        
-        // Soft delete - just mark as inactive
-        supplier.setIsActive(false);
-        supplierRepository.save(supplier);
+        if (!supplierRepository.existsById(id)) {
+            throw new EntityNotFoundException("Supplier not found with id: " + id);
+        }
+        supplierRepository.deleteById(id);
     }
     
     private SupplierDTO mapToDTO(Supplier supplier) {
