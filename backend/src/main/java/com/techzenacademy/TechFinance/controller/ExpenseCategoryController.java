@@ -44,7 +44,7 @@ public class ExpenseCategoryController {
     @PreAuthorize("hasRole('admin')")
     public ResponseEntity<ExpenseCategoryDTO> updateCategory(
             @PathVariable("id") Integer id, 
-            @Valid @RequestBody ExpenseCategoryRequest request) {
+            @RequestBody ExpenseCategoryRequest request) {  // Removed @Valid annotation
         return ResponseEntity.ok(expenseCategoryService.updateCategory(id, request));
     }
     

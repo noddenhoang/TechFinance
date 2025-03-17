@@ -64,7 +64,7 @@ public class ExpenseBudgetController {
     @PreAuthorize("hasRole('admin')")
     public ResponseEntity<ExpenseBudgetDTO> updateBudget(
             @PathVariable("id") Integer id,
-            @Valid @RequestBody ExpenseBudgetRequest request) {
+            @RequestBody ExpenseBudgetRequest request) {  // Removed @Valid annotation
         return ResponseEntity.ok(expenseBudgetService.updateBudget(id, request));
     }
     

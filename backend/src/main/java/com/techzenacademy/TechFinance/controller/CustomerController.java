@@ -41,7 +41,7 @@ public class CustomerController {
     @PutMapping("/{id}")
     public ResponseEntity<CustomerDTO> updateCustomer(
             @PathVariable("id") Integer id, 
-            @Valid @RequestBody CustomerRequest request) {
+            @RequestBody CustomerRequest request) {  // Removed @Valid annotation
         return ResponseEntity.ok(customerService.updateCustomer(id, request));
     }
     

@@ -41,7 +41,7 @@ public class SupplierController {
     @PutMapping("/{id}")
     public ResponseEntity<SupplierDTO> updateSupplier(
             @PathVariable("id") Integer id, 
-            @Valid @RequestBody SupplierRequest request) {
+            @RequestBody SupplierRequest request) {  // Removed @Valid annotation
         return ResponseEntity.ok(supplierService.updateSupplier(id, request));
     }
     

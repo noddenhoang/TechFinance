@@ -44,7 +44,7 @@ public class IncomeCategoryController {
     @PreAuthorize("hasRole('admin')")
     public ResponseEntity<IncomeCategoryDTO> updateCategory(
             @PathVariable("id") Integer id, 
-            @Valid @RequestBody IncomeCategoryRequest request) {
+            @RequestBody IncomeCategoryRequest request) {  // Removed @Valid annotation
         return ResponseEntity.ok(incomeCategoryService.updateCategory(id, request));
     }
 

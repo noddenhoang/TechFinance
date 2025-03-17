@@ -97,23 +97,47 @@ public class IncomeTransactionService {
     }
     
     private void updateTransactionFromRequest(IncomeTransaction transaction, IncomeTransactionRequest request) {
-        IncomeCategory category = categoryRepository.findById(request.getCategoryId())
-                .orElseThrow(() -> new EntityNotFoundException("Income category not found with id: " + request.getCategoryId()));
-        transaction.setCategory(category);
+        // Only update category if provided
+        if (request.getCategoryId() != null) {
+            IncomeCategory category = categoryRepository.findById(request.getCategoryId())
+                    .orElseThrow(() -> new EntityNotFoundException("Income category not found with id: " + request.getCategoryId()));
+            transaction.setCategory(category);
+        }
         
+        // Update customer only if explicitly provided in request
         if (request.getCustomerId() != null) {
             Customer customer = customerRepository.findById(request.getCustomerId())
                     .orElseThrow(() -> new EntityNotFoundException("Customer not found with id: " + request.getCustomerId()));
             transaction.setCustomer(customer);
-        } else {
+        } else if (request.getCustomerId() == null && request.hasCustomerIdField()) {
+            // Only set customer to null if field was explicitly included in request but with null value
             transaction.setCustomer(null);
         }
         
-        transaction.setTransactionDate(request.getTransactionDate());
-        transaction.setAmount(request.getAmount());
-        transaction.setPaymentStatus(request.getPaymentStatus());
-        transaction.setDescription(request.getDescription());
-        transaction.setReferenceNo(request.getReferenceNo());
+        // Only update transaction date if provided
+        if (request.getTransactionDate() != null) {
+            transaction.setTransactionDate(request.getTransactionDate());
+        }
+        
+        // Only update amount if provided
+        if (request.getAmount() != null) {
+            transaction.setAmount(request.getAmount());
+        }
+        
+        // Only update payment status if provided
+        if (request.getPaymentStatus() != null) {
+            transaction.setPaymentStatus(request.getPaymentStatus());
+        }
+        
+        // Only update description if provided
+        if (request.getDescription() != null) {
+            transaction.setDescription(request.getDescription());
+        }
+        
+        // Only update reference number if provided
+        if (request.getReferenceNo() != null) {
+            transaction.setReferenceNo(request.getReferenceNo());
+        }
     }
     
     private IncomeTransactionDTO mapToDTO(IncomeTransaction transaction) {

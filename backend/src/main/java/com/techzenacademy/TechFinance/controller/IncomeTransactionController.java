@@ -62,7 +62,7 @@ public class IncomeTransactionController {
     @PutMapping("/{id}")
     public ResponseEntity<IncomeTransactionDTO> updateTransaction(
             @PathVariable("id") Integer id,
-            @Valid @RequestBody IncomeTransactionRequest request) {
+            @RequestBody IncomeTransactionRequest request) {  // Removed @Valid annotation
         return ResponseEntity.ok(incomeTransactionService.updateTransaction(id, request));
     }
     

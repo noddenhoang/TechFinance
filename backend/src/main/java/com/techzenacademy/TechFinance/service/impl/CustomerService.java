@@ -65,18 +65,40 @@ public class CustomerService {
                 .orElseThrow(() -> new EntityNotFoundException("Customer not found with id: " + id));
         
         // Check if email is changed and if new email already exists
-        if (request.getEmail() != null && !request.getEmail().equals(customer.getEmail()) && 
+        if (request.getEmail() != null && 
+                !request.getEmail().equals(customer.getEmail()) && 
                 customerRepository.existsByEmail(request.getEmail())) {
             throw new IllegalArgumentException("A customer with this email already exists");
         }
         
-        customer.setName(request.getName());
-        customer.setEmail(request.getEmail());
-        customer.setPhone(request.getPhone());
-        customer.setAddress(request.getAddress());
-        customer.setTaxCode(request.getTaxCode());
-        customer.setNotes(request.getNotes());
-        customer.setIsActive(request.getIsActive());
+        // Only update fields if they are provided in the request
+        if (request.getName() != null) {
+            customer.setName(request.getName());
+        }
+        
+        if (request.getEmail() != null) {
+            customer.setEmail(request.getEmail());
+        }
+        
+        if (request.getPhone() != null) {
+            customer.setPhone(request.getPhone());
+        }
+        
+        if (request.getAddress() != null) {
+            customer.setAddress(request.getAddress());
+        }
+        
+        if (request.getTaxCode() != null) {
+            customer.setTaxCode(request.getTaxCode());
+        }
+        
+        if (request.getNotes() != null) {
+            customer.setNotes(request.getNotes());
+        }
+        
+        if (request.getIsActive() != null) {
+            customer.setIsActive(request.getIsActive());
+        }
         
         Customer updatedCustomer = customerRepository.save(customer);
         return mapToDTO(updatedCustomer);

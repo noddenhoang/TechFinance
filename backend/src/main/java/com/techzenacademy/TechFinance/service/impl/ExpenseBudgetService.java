@@ -91,20 +91,56 @@ public class ExpenseBudgetService {
         ExpenseBudget budget = budgetRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Expense budget not found with id: " + id));
         
+        // Check if we need to check for duplicate (category, year, month) combination
+        boolean needsUniqueCheck = false;
+        
+        if (request.getCategoryId() != null && !budget.getCategory().getId().equals(request.getCategoryId())) {
+            needsUniqueCheck = true;
+        }
+        
+        if (request.getYear() != null && !budget.getYear().equals(request.getYear())) {
+            needsUniqueCheck = true;
+        }
+        
+        if (request.getMonth() != null && !budget.getMonth().equals(request.getMonth())) {
+            needsUniqueCheck = true;
+        }
+        
         // If category, year or month changed, check for duplicates
-        if (!budget.getCategory().getId().equals(request.getCategoryId()) ||
-                !budget.getYear().equals(request.getYear()) ||
-                !budget.getMonth().equals(request.getMonth())) {
-                
-            if (budgetRepository.existsByCategoryIdAndYearAndMonth(
-                    request.getCategoryId(), request.getYear(), request.getMonth())) {
+        if (needsUniqueCheck) {
+            Integer categoryId = request.getCategoryId() != null ? request.getCategoryId() : budget.getCategory().getId();
+            Integer year = request.getYear() != null ? request.getYear() : budget.getYear();
+            Integer month = request.getMonth() != null ? request.getMonth() : budget.getMonth();
+            
+            if (budgetRepository.existsByCategoryIdAndYearAndMonth(categoryId, year, month)) {
                 throw new IllegalArgumentException(
                     String.format("A budget for category id: %d, year: %d, month: %d already exists", 
-                                  request.getCategoryId(), request.getYear(), request.getMonth()));
+                                  categoryId, year, month));
             }
         }
         
-        updateBudgetFromRequest(budget, request);
+        // Update only provided fields
+        if (request.getCategoryId() != null) {
+            ExpenseCategory category = categoryRepository.findById(request.getCategoryId())
+                    .orElseThrow(() -> new EntityNotFoundException("Expense category not found with id: " + request.getCategoryId()));
+            budget.setCategory(category);
+        }
+        
+        if (request.getYear() != null) {
+            budget.setYear(request.getYear());
+        }
+        
+        if (request.getMonth() != null) {
+            budget.setMonth(request.getMonth());
+        }
+        
+        if (request.getAmount() != null) {
+            budget.setAmount(request.getAmount());
+        }
+        
+        if (request.getNotes() != null) {
+            budget.setNotes(request.getNotes());
+        }
         
         ExpenseBudget updatedBudget = budgetRepository.save(budget);
         return mapToDTO(updatedBudget);

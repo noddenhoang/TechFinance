@@ -62,7 +62,7 @@ public class ExpenseTransactionController {
     @PutMapping("/{id}")
     public ResponseEntity<ExpenseTransactionDTO> updateTransaction(
             @PathVariable("id") Integer id,
-            @Valid @RequestBody ExpenseTransactionRequest request) {
+            @RequestBody ExpenseTransactionRequest request) {  // Removed @Valid annotation
         return ResponseEntity.ok(expenseTransactionService.updateTransaction(id, request));
     }
     

@@ -60,15 +60,25 @@ public class IncomeCategoryService {
         IncomeCategory category = incomeCategoryRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Income category not found with id: " + id));
         
-        // Check if name is changed and if new name already exists
-        if (!category.getName().equals(request.getName()) && 
-                incomeCategoryRepository.existsByName(request.getName())) {
-            throw new IllegalArgumentException("A category with this name already exists");
+        // Only update name if provided and different from current value
+        if (request.getName() != null && !request.getName().isEmpty()) {
+            // Check if name is changed and if new name already exists
+            if (!category.getName().equals(request.getName()) && 
+                    incomeCategoryRepository.existsByName(request.getName())) {
+                throw new IllegalArgumentException("A category with this name already exists");
+            }
+            category.setName(request.getName());
         }
         
-        category.setName(request.getName());
-        category.setDescription(request.getDescription());
-        category.setIsActive(request.getIsActive());
+        // Only update description if provided
+        if (request.getDescription() != null) {
+            category.setDescription(request.getDescription());
+        }
+        
+        // Only update active status if provided
+        if (request.getIsActive() != null) {
+            category.setIsActive(request.getIsActive());
+        }
         
         IncomeCategory updatedCategory = incomeCategoryRepository.save(category);
         return mapToDTO(updatedCategory);
