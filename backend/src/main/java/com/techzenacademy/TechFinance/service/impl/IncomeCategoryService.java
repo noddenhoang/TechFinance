@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -105,5 +106,55 @@ public class IncomeCategoryService {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         return userRepository.findByUsername(username)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
+    }
+    
+    /**
+     * Filter income categories based on optional criteria
+     * If all parameters are null, returns all categories
+     * 
+     * @param name Filter by name containing this string (case-insensitive)
+     * @param isActive Filter by active status
+     * @param createdAt Filter by creation date (date only, not time)
+     * @return List of filtered income categories
+     */
+    public List<IncomeCategoryDTO> filterCategories(String name, Boolean isActive, LocalDate createdAt) {
+        // If all filter parameters are null, return all categories
+        if (name == null && isActive == null && createdAt == null) {
+            return getAllCategories();
+        }
+
+        List<IncomeCategory> categories = incomeCategoryRepository.findAll();
+        
+        return categories.stream()
+                .filter(category -> {
+                    // Filter by name if provided - using simple LIKE pattern
+                    if (name != null && !name.isEmpty()) {
+                        if (category.getName() == null) {
+                            return false;
+                        }
+                        // Simple case-insensitive LIKE operation
+                        if (!category.getName().toLowerCase().contains(name.toLowerCase())) {
+                            return false;
+                        }
+                    }
+                    
+                    // Filter by isActive if provided
+                    if (isActive != null && 
+                        (category.getIsActive() == null || 
+                        !category.getIsActive().equals(isActive))) {
+                        return false;
+                    }
+                    
+                    // Filter by createdAt date if provided
+                    if (createdAt != null && 
+                        (category.getCreatedAt() == null || 
+                        !LocalDate.from(category.getCreatedAt()).equals(createdAt))) {
+                        return false;
+                    }
+                    
+                    return true;
+                })
+                .map(this::mapToDTO)
+                .collect(Collectors.toList());
     }
 }

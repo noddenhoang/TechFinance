@@ -5,11 +5,13 @@ import com.techzenacademy.TechFinance.dto.IncomeCategoryRequest;
 import com.techzenacademy.TechFinance.service.impl.IncomeCategoryService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -20,8 +22,11 @@ public class IncomeCategoryController {
     private IncomeCategoryService incomeCategoryService;
     
     @GetMapping
-    public ResponseEntity<List<IncomeCategoryDTO>> getAllCategories() {
-        return ResponseEntity.ok(incomeCategoryService.getAllCategories());
+    public ResponseEntity<List<IncomeCategoryDTO>> getCategories(
+            @RequestParam(name = "name", required = false) String name,
+            @RequestParam(name = "isActive", required = false) Boolean isActive,
+            @RequestParam(name = "createdAt", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdAt) {
+        return ResponseEntity.ok(incomeCategoryService.filterCategories(name, isActive, createdAt));
     }
     
     @GetMapping("/active")
