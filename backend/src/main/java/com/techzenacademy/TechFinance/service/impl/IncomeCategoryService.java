@@ -97,6 +97,7 @@ public class IncomeCategoryService {
         dto.setName(category.getName());
         dto.setDescription(category.getDescription());
         dto.setIsActive(category.getIsActive());
+        dto.setCreatedAt(category.getCreatedAt());
         return dto;
     }
     
