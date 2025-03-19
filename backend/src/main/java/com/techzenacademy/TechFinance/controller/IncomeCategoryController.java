@@ -40,13 +40,13 @@ public class IncomeCategoryController {
     }
     
     @PostMapping
-    @PreAuthorize("hasRole('admin')")
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
     public ResponseEntity<IncomeCategoryDTO> createCategory(@Valid @RequestBody IncomeCategoryRequest request) {
         return new ResponseEntity<>(incomeCategoryService.createCategory(request), HttpStatus.CREATED);
     }
     
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('admin')")
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
     public ResponseEntity<IncomeCategoryDTO> updateCategory(
             @PathVariable("id") Integer id, 
             @RequestBody IncomeCategoryRequest request) {  // Removed @Valid annotation
@@ -54,7 +54,7 @@ public class IncomeCategoryController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('admin')")
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
     public ResponseEntity<Void> deleteCategory(@PathVariable("id") Integer id) {
         incomeCategoryService.deleteCategory(id);
         return ResponseEntity.noContent().build();
