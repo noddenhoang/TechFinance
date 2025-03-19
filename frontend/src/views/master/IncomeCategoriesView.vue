@@ -1132,6 +1132,69 @@ const statusOptions = [
   vertical-align: -0.125em;
   width: 1em;
   height: 1em;
+  line-height: 1;
+  font-size: inherit;
+}
+
+/* Điều chỉnh icon căn giữa trong các nút */
+.btn-primary .bi,
+.btn-outline .bi,
+.btn-danger .bi,
+.btn-close .bi {
+  vertical-align: -0.125em;
+  position: relative;
+  top: -0.05em;
+}
+
+/* Điều chỉnh icon trong status badge */
+.status-badge .bi {
+  position: relative;
+  top: -0.05em;
+}
+
+/* Điều chỉnh icon trong form error */
+.form-error .bi {
+  position: relative;
+  top: -0.05em;
+}
+
+/* Điều chỉnh icon trong toast notification */
+.toast-notification .bi {
+  position: relative;
+  top: -0.05em;
+}
+
+/* Điều chỉnh icon trong empty state */
+.empty-icon, 
+.error-icon {
+  position: relative;
+  top: 0.125em;
+}
+
+/* Điều chỉnh icon trong warning */
+.icon-warning .bi {
+  position: relative;
+  top: 0;
+}
+
+/* Điều chỉnh icon trong action button */
+.btn-icon .bi {
+  font-size: 1.1em;
+  position: relative;
+  top: 0;
+}
+
+/* Chỉnh spinner alignment */
+.spinner {
+  display: inline-block;
+  position: relative;
+  top: -0.05em;
+}
+
+/* Chỉnh card-title alignment */
+.card-title .bi {
+  position: relative;
+  top: -0.05em;
 }
 
 /* ANIMATIONS */
@@ -1164,8 +1227,5 @@ const statusOptions = [
     opacity: 1;
     transform: translateX(0);
   }
-}
-.input-icon-left[data-v-8f303e64] {
-    top: 40%;
 }
 </style>
