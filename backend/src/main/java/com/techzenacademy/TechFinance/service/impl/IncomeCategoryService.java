@@ -10,6 +10,9 @@ import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import com.techzenacademy.TechFinance.dto.page.PageResponse;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -146,5 +149,23 @@ public class IncomeCategoryService {
                 })
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());
+    }
+    
+    /**
+     * Filter income categories based on optional criteria with pagination
+     * 
+     * @param name Filter by name containing this string (case-insensitive)
+     * @param isActive Filter by active status
+     * @param pageable Pagination information
+     * @return PageResponse of filtered income categories
+     */
+    public PageResponse<IncomeCategoryDTO> getPagedCategories(String name, Boolean isActive, Pageable pageable) {
+        Page<IncomeCategory> categoryPage = incomeCategoryRepository.findWithFilters(name, isActive, pageable);
+        
+        // Map the contents using the existing mapToDTO method
+        Page<IncomeCategoryDTO> dtoPage = categoryPage.map(this::mapToDTO);
+        
+        // Return the custom page response
+        return new PageResponse<>(dtoPage);
     }
 }

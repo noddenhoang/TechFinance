@@ -13,6 +13,10 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import com.techzenacademy.TechFinance.dto.page.PageResponse;
 
 @RestController
 @RequestMapping("/api/income-categories")
@@ -22,16 +26,30 @@ public class IncomeCategoryController {
     private IncomeCategoryService incomeCategoryService;
     
     @GetMapping
-    public ResponseEntity<List<IncomeCategoryDTO>> getCategories(
+    public ResponseEntity<PageResponse<IncomeCategoryDTO>> getCategories(
             @RequestParam(name = "name", required = false) String name,
-            @RequestParam(name = "isActive", required = false) Boolean isActive) {
-        return ResponseEntity.ok(incomeCategoryService.filterCategories(name, isActive));
+            @RequestParam(name = "isActive", required = false) Boolean isActive,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "8") int size,
+            @RequestParam(name = "sort", defaultValue = "id,asc") String[] sort) {
+        
+        // Tạo đối tượng Sort
+        String sortField = sort[0];
+        String sortDirection = sort.length > 1 ? sort[1] : "asc";
+        
+        Sort.Direction direction = sortDirection.equalsIgnoreCase("asc") ? 
+                Sort.Direction.ASC : Sort.Direction.DESC;
+        Sort sortObj = Sort.by(direction, sortField);
+        
+        // Tạo đối tượng Pageable với kích thước mặc định là 8
+        Pageable pageable = PageRequest.of(page, size, sortObj);
+        
+        // Lấy dữ liệu đã phân trang
+        PageResponse<IncomeCategoryDTO> pagedResponse = 
+                incomeCategoryService.getPagedCategories(name, isActive, pageable);
+                
+        return ResponseEntity.ok(pagedResponse);
     }
-    
-    // @GetMapping("/active")
-    // public ResponseEntity<List<IncomeCategoryDTO>> getActiveCategories() {
-    //     return ResponseEntity.ok(incomeCategoryService.getActiveCategories());
-    // }
     
     @GetMapping("/{id}")
     public ResponseEntity<IncomeCategoryDTO> getCategoryById(@PathVariable("id") Integer id) {
