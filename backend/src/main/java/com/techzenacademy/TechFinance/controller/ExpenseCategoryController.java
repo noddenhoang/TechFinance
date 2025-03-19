@@ -20,13 +20,10 @@ public class ExpenseCategoryController {
     private ExpenseCategoryService expenseCategoryService;
     
     @GetMapping
-    public ResponseEntity<List<ExpenseCategoryDTO>> getAllCategories() {
-        return ResponseEntity.ok(expenseCategoryService.getAllCategories());
-    }
-    
-    @GetMapping("/active")
-    public ResponseEntity<List<ExpenseCategoryDTO>> getActiveCategories() {
-        return ResponseEntity.ok(expenseCategoryService.getActiveCategories());
+    public ResponseEntity<List<ExpenseCategoryDTO>> getCategories(
+            @RequestParam(name = "name", required = false) String name,
+            @RequestParam(name = "isActive", required = false) Boolean isActive) {
+        return ResponseEntity.ok(expenseCategoryService.filterCategories(name, isActive));
     }
     
     @GetMapping("/{id}")
@@ -35,21 +32,21 @@ public class ExpenseCategoryController {
     }
     
     @PostMapping
-    @PreAuthorize("hasRole('admin')")
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
     public ResponseEntity<ExpenseCategoryDTO> createCategory(@Valid @RequestBody ExpenseCategoryRequest request) {
         return new ResponseEntity<>(expenseCategoryService.createCategory(request), HttpStatus.CREATED);
     }
     
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('admin')")
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
     public ResponseEntity<ExpenseCategoryDTO> updateCategory(
             @PathVariable("id") Integer id, 
-            @RequestBody ExpenseCategoryRequest request) {  // Removed @Valid annotation
+            @RequestBody ExpenseCategoryRequest request) {
         return ResponseEntity.ok(expenseCategoryService.updateCategory(id, request));
     }
     
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('admin')")
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
     public ResponseEntity<Void> deleteCategory(@PathVariable("id") Integer id) {
         expenseCategoryService.deleteCategory(id);
         return ResponseEntity.noContent().build();

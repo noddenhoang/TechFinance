@@ -29,11 +29,11 @@ public class ExpenseCategoryService {
                 .collect(Collectors.toList());
     }
     
-    public List<ExpenseCategoryDTO> getActiveCategories() {
-        return expenseCategoryRepository.findByIsActiveTrue().stream()
-                .map(this::mapToDTO)
-                .collect(Collectors.toList());
-    }
+    // public List<ExpenseCategoryDTO> getActiveCategories() {
+    //     return expenseCategoryRepository.findByIsActiveTrue().stream()
+    //             .map(this::mapToDTO)
+    //             .collect(Collectors.toList());
+    // }
     
     public ExpenseCategoryDTO getCategoryById(Integer id) {
         return expenseCategoryRepository.findById(id)
@@ -89,6 +89,48 @@ public class ExpenseCategoryService {
             throw new EntityNotFoundException("Expense category not found with id: " + id);
         }
         expenseCategoryRepository.deleteById(id);
+    }
+    
+    /**
+     * Filter expense categories based on optional criteria
+     * If all parameters are null, returns all categories
+     * 
+     * @param name Filter by name containing this string (case-insensitive)
+     * @param isActive Filter by active status
+     * @return List of filtered expense categories
+     */
+    public List<ExpenseCategoryDTO> filterCategories(String name, Boolean isActive) {
+        // If all filter parameters are null, return all categories
+        if (name == null && isActive == null) {
+            return getAllCategories();
+        }
+
+        List<ExpenseCategory> categories = expenseCategoryRepository.findAll();
+        
+        return categories.stream()
+                .filter(category -> {
+                    // Filter by name if provided - using simple LIKE pattern
+                    if (name != null && !name.isEmpty()) {
+                        if (category.getName() == null) {
+                            return false;
+                        }
+                        // Simple case-insensitive LIKE operation
+                        if (!category.getName().toLowerCase().contains(name.toLowerCase())) {
+                            return false;
+                        }
+                    }
+                    
+                    // Filter by isActive if provided
+                    if (isActive != null && 
+                        (category.getIsActive() == null || 
+                        !category.getIsActive().equals(isActive))) {
+                        return false;
+                    }
+                    
+                    return true;
+                })
+                .map(this::mapToDTO)
+                .collect(Collectors.toList());
     }
     
     private ExpenseCategoryDTO mapToDTO(ExpenseCategory category) {
