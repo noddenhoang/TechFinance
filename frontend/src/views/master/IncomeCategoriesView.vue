@@ -254,7 +254,11 @@ async function deleteCategory() {
     await incomeCategories.delete(categoryToDelete.value.id)
     showNotification('Xóa danh mục thành công')
     closeDeleteModal()
-    await loadCategories()
+    if (categories.value.length == 1 && pagination.currentPage > 0) {
+       loadCategories(pagination.currentPage - 1)
+    } else {
+      await loadCategories(pagination.currentPage)
+    }
   } catch (err) {
     showNotification('Không thể xóa danh mục', 'error')
   } finally {

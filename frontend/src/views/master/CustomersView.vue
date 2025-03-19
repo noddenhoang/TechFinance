@@ -297,6 +297,9 @@ async function saveCustomer() {
         selectedCustomer.value = await customers.getById(modalCustomer.id);
       }
       
+      // Đóng modal trước khi load lại dữ liệu
+      closeModal();
+      
       // Tải lại trang hiện tại
       await loadCustomers(pagination.currentPage);
     } else {
@@ -310,11 +313,12 @@ async function saveCustomer() {
       });
       showNotification('Tạo khách hàng mới thành công');
       
-      // Tải lại từ trang đầu tiên
-      await loadCustomers(0);
+      // Đóng modal trước khi load lại dữ liệu
+      closeModal();
+      
+      // Tải lại từ trang hiện tại thay vì về trang đầu tiên
+      await loadCustomers(pagination.currentPage);
     }
-    
-    closeModal();
   } catch (error) {
     console.error('Lỗi khi lưu khách hàng:', error);
     
@@ -358,6 +362,8 @@ async function deleteCustomer() {
   try {
     await customers.delete(customerToDelete.value.id);
     showNotification('Xóa khách hàng thành công');
+    
+    // Đóng modal xóa
     closeDeleteModal();
     
     // Nếu đang xem chi tiết khách hàng này thì đóng chi tiết
@@ -365,7 +371,8 @@ async function deleteCustomer() {
       closeDetails();
     }
     
-    // Kiểm tra nếu đây là item cuối cùng trên trang hiện tại
+    // Kiểm tra nếu đây là item cuối cùng trên trang hiện tại 
+    // và không phải trang đầu tiên
     if (customersList.value.length === 1 && pagination.currentPage > 0) {
       // Nếu đây là item cuối cùng và không phải trang đầu tiên
       // thì chuyển đến trang trước đó
@@ -375,6 +382,7 @@ async function deleteCustomer() {
       await loadCustomers(pagination.currentPage);
     }
   } catch (err) {
+    console.error('Lỗi khi xóa khách hàng:', err);
     showNotification('Không thể xóa khách hàng', 'error');
   } finally {
     deleting.value = false;
@@ -474,8 +482,8 @@ async function deleteCustomer() {
             <table class="data-table">
               <thead>
                 <tr>
-                  <th>Tên khách hàng</th>
-                  <th v-if="isAdmin">Hành động</th>
+                  <th class="name-column">Tên khách hàng</th>
+                  <th v-if="isAdmin" class="action-column text-center">Hành động</th>
                 </tr>
               </thead>
               <tbody>
@@ -486,17 +494,19 @@ async function deleteCustomer() {
                   class="customer-row"
                   :class="{ 'active': selectedCustomer && selectedCustomer.id === customer.id }"
                 >
-                  <td class="customer-name">
+                  <td class="customer-name name-column">
                     <i class="bi bi-person customer-icon"></i>
                     {{ customer.name }}
                   </td>
-                  <td v-if="isAdmin" class="customer-actions">
-                    <button @click.stop="openEditModal(customer)" class="btn-outline">
-                      <i class="bi bi-pencil"></i>
-                    </button>
-                    <button @click.stop="openDeleteModal(customer)" class="btn-outline">
-                      <i class="bi bi-trash"></i>
-                    </button>
+                  <td v-if="isAdmin" class="action-column text-center">
+                    <div class="action-buttons">
+                      <button @click.stop="openEditModal(customer)" class="btn-outline btn-icon">
+                        <i class="bi bi-pencil"></i>
+                      </button>
+                      <button @click.stop="openDeleteModal(customer)" class="btn-outline btn-icon">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               </tbody>
@@ -1380,5 +1390,30 @@ detail-row:last-child {
   .filter-grid {
     grid-template-columns: repeat(2, 1fr);
   }
+}
+
+/* Thêm style mới cho các cột */
+.name-column {
+  text-align: left;
+}
+
+.action-column {
+  width: 140px; /* Đặt chiều rộng cố định */
+}
+
+.text-center {
+  text-align: center !important;
+}
+
+.action-buttons {
+  display: flex;
+  justify-content: center; /* Căn giữa các nút */
+  gap: 0.5rem;
+}
+
+.btn-icon {
+  padding: 0.5rem;
+  min-width: 36px;
+  height: 36px;
 }
 </style>
