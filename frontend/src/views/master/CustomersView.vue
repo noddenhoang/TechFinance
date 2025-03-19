@@ -59,8 +59,27 @@ const modalCustomer = reactive({
 });
 const modalErrors = reactive({
   name: '',
-  email: ''
+  email: '',
+  phone: '' // Thêm trường lỗi cho số điện thoại
 });
+
+// Thêm hàm validate số điện thoại
+function validatePhone() {
+  // Loại bỏ tất cả ký tự không phải số
+  modalCustomer.phone = modalCustomer.phone.replace(/\D/g, '');
+  
+  // Giới hạn ở 10 số
+  if (modalCustomer.phone.length > 10) {
+    modalCustomer.phone = modalCustomer.phone.slice(0, 10);
+  }
+  
+  // Hiển thị lỗi nếu đã nhập nhưng không đủ 10 số
+  if (modalCustomer.phone && modalCustomer.phone.length < 10) {
+    modalErrors.phone = 'Số điện thoại phải có đúng 10 chữ số';
+  } else {
+    modalErrors.phone = '';
+  }
+}
 
 // States for Delete modal
 const showDeleteModal = ref(false);
@@ -197,6 +216,7 @@ function openAddModal() {
   modalCustomer.isActive = true;
   modalErrors.name = '';
   modalErrors.email = '';
+  modalErrors.phone = '';
   showModal.value = true;
   
   // Focus vào input sau khi modal hiển thị
@@ -217,6 +237,7 @@ function openEditModal(customer) {
   modalCustomer.isActive = customer.isActive;
   modalErrors.name = '';
   modalErrors.email = '';
+  modalErrors.phone = '';
   showModal.value = true;
   
   // Focus vào input sau khi modal hiển thị
@@ -235,6 +256,7 @@ async function saveCustomer() {
   // Reset errors
   modalErrors.name = '';
   modalErrors.email = '';
+  modalErrors.phone = '';
   
   // Validate
   let isValid = true;
@@ -246,6 +268,12 @@ async function saveCustomer() {
   
   if (modalCustomer.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(modalCustomer.email)) {
     modalErrors.email = 'Email không hợp lệ';
+    isValid = false;
+  }
+  
+  // Kiểm tra nếu số điện thoại đã nhập thì phải đúng 10 số
+  if (modalCustomer.phone && modalCustomer.phone.length !== 10) {
+    modalErrors.phone = 'Số điện thoại phải có đúng 10 chữ số';
     isValid = false;
   }
   
@@ -617,7 +645,7 @@ async function deleteCustomer() {
           </button>
         </div>
         
-        <div class="modal-content">
+        <div class="modal-body">
           <div class="form-group">
             <label class="form-label">Tên khách hàng</label>
             <input
@@ -647,10 +675,14 @@ async function deleteCustomer() {
             <label class="form-label">Số điện thoại</label>
             <input
               v-model="modalCustomer.phone"
-              type="text"
+              type="tel"
               class="form-input"
+              :class="{ 'is-invalid': modalErrors.phone }"
               placeholder="Nhập số điện thoại khách hàng"
+              maxlength="10"
+              @input="validatePhone"
             />
+            <div v-if="modalErrors.phone" class="invalid-feedback">{{ modalErrors.phone }}</div>
           </div>
           
           <div class="form-group">
@@ -1206,7 +1238,7 @@ async function deleteCustomer() {
   margin-bottom: 1rem;
 }
 
-.detail-row:last-child {
+detail-row:last-child {
   margin-bottom: 0;
 }
 
@@ -1250,6 +1282,9 @@ async function deleteCustomer() {
   width: 100%;
   max-width: 30rem;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
 }
 
 .modal-header {
@@ -1267,8 +1302,30 @@ async function deleteCustomer() {
   color: #1e293b;
 }
 
-.modal-content {
-  padding: 1.25rem;
+.modal-body {
+  padding: 1.5rem;
+  max-height: 70vh; /* Giới hạn chiều cao tối đa */
+  overflow-y: auto; /* Thêm thanh cuộn dọc khi nội dung vượt quá */
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e0 #f8fafc;
+}
+
+.modal-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.modal-body::-webkit-scrollbar-track {
+  background: #f8fafc;
+  border-radius: 4px;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+  background-color: #cbd5e0;
+  border-radius: 4px;
+}
+
+.modal-body::-webkit-scrollbar-thumb:hover {
+  background-color: #a0aec0;
 }
 
 .modal-actions {
@@ -1278,6 +1335,11 @@ async function deleteCustomer() {
   padding: 1rem 1.25rem;
   border-top: 1px solid #e2e8f0;
   background-color: #f8fafc;
+  position: sticky;
+  bottom: 0;
+  background-color: white;
+  padding-top: 1rem;
+  margin-top: 1rem;
 }
 
 .form-group {
