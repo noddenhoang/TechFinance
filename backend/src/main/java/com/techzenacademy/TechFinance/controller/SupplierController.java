@@ -2,9 +2,13 @@ package com.techzenacademy.TechFinance.controller;
 
 import com.techzenacademy.TechFinance.dto.SupplierDTO;
 import com.techzenacademy.TechFinance.dto.SupplierRequest;
+import com.techzenacademy.TechFinance.dto.page.PageResponse;
 import com.techzenacademy.TechFinance.service.impl.SupplierService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,10 +23,26 @@ public class SupplierController {
     private SupplierService supplierService;
     
     @GetMapping
-    public ResponseEntity<List<SupplierDTO>> getAllSuppliers() {
-        return ResponseEntity.ok(supplierService.getAllSuppliers());
+    public ResponseEntity<PageResponse<SupplierDTO>> getSuppliers(
+            @RequestParam(name = "name", required = false) String name,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "8") int size,
+            @RequestParam(name = "sort", defaultValue = "id,asc") String[] sort) {
+        
+        // Xử lý sắp xếp
+        String sortField = sort[0];
+        String sortDirection = sort.length > 1 ? sort[1] : "asc";
+        
+        Sort.Direction direction = sortDirection.equalsIgnoreCase("asc") ? 
+                Sort.Direction.ASC : Sort.Direction.DESC;
+        
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortField));
+        
+        // Gọi service để lấy dữ liệu với phân trang và filter
+        return ResponseEntity.ok(supplierService.getPagedSuppliers(name, pageable));
     }
     
+    // Giữ nguyên các endpoint hiện có
     @GetMapping("/active")
     public ResponseEntity<List<SupplierDTO>> getActiveSuppliers() {
         return ResponseEntity.ok(supplierService.getActiveSuppliers());
@@ -41,7 +61,7 @@ public class SupplierController {
     @PutMapping("/{id}")
     public ResponseEntity<SupplierDTO> updateSupplier(
             @PathVariable("id") Integer id, 
-            @RequestBody SupplierRequest request) {  // Removed @Valid annotation
+            @RequestBody SupplierRequest request) {
         return ResponseEntity.ok(supplierService.updateSupplier(id, request));
     }
     

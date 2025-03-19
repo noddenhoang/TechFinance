@@ -54,6 +54,7 @@ const modalCustomer = reactive({
   email: '',
   phone: '',
   address: '',
+  taxCode: '', // Thêm thuộc tính taxCode
   notes: '',
   isActive: true
 });
@@ -221,6 +222,7 @@ function openAddModal() {
   modalCustomer.email = '';
   modalCustomer.phone = '';
   modalCustomer.address = '';
+  modalCustomer.taxCode = ''; // Thêm dòng này
   modalCustomer.notes = '';
   modalCustomer.isActive = true;
   modalErrors.name = '';
@@ -242,6 +244,7 @@ function openEditModal(customer) {
   modalCustomer.email = customer.email;
   modalCustomer.phone = customer.phone || '';
   modalCustomer.address = customer.address || '';
+  modalCustomer.taxCode = customer.taxCode || ''; // Thêm dòng này
   modalCustomer.notes = customer.notes || '';
   modalCustomer.isActive = customer.isActive;
   modalErrors.name = '';
@@ -296,6 +299,7 @@ async function saveCustomer() {
         email: modalCustomer.email,
         phone: modalCustomer.phone,
         address: modalCustomer.address,
+        taxCode: modalCustomer.taxCode, // Thêm vào request
         notes: modalCustomer.notes,
         isActive: modalCustomer.isActive
       });
@@ -317,6 +321,7 @@ async function saveCustomer() {
         email: modalCustomer.email,
         phone: modalCustomer.phone,
         address: modalCustomer.address,
+        taxCode: modalCustomer.taxCode, // Thêm vào request
         notes: modalCustomer.notes,
         isActive: modalCustomer.isActive
       });
@@ -370,10 +375,12 @@ async function deleteCustomer() {
   deleting.value = true;
   try {
     await customers.delete(customerToDelete.value.id);
-    showNotification('Xóa khách hàng thành công');
-    
+
     // Đóng modal xóa
     closeDeleteModal();
+    
+    showNotification('Xóa khách hàng thành công');
+  
     
     // Nếu đang xem chi tiết khách hàng này thì đóng chi tiết
     if (selectedCustomer.value && selectedCustomer.value.id === customerToDelete.value.id) {
@@ -648,6 +655,13 @@ async function deleteCustomer() {
                 </div>
                 <div class="detail-value">{{ selectedCustomer.notes || 'Không có ghi chú' }}</div>
               </div>
+              <div class="detail-row">
+                <div class="detail-label">
+                  <i class="bi bi-receipt"></i>
+                  Mã số thuế:
+                </div>
+                <div class="detail-value">{{ selectedCustomer.taxCode || 'Chưa cung cấp' }}</div>
+              </div>
             </div>
           </div>
         </div>
@@ -705,13 +719,23 @@ async function deleteCustomer() {
           </div>
           
           <div class="form-group">
-            <label class="form-label">Địa chỉ</label>
+            <label class="form-label">Mã số thuế</label>
             <input
-              v-model="modalCustomer.address"
+              v-model="modalCustomer.taxCode"
               type="text"
               class="form-input"
-              placeholder="Nhập địa chỉ khách hàng"
+              placeholder="Nhập mã số thuế (nếu có)"
             />
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Địa chỉ</label>
+            <textarea
+              v-model="modalCustomer.address"
+              class="form-input"
+              placeholder="Nhập địa chỉ khách hàng"
+              rows="3"
+            ></textarea>
           </div>
           
           <div class="form-group">

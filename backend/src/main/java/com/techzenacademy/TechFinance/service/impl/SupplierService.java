@@ -2,12 +2,15 @@ package com.techzenacademy.TechFinance.service.impl;
 
 import com.techzenacademy.TechFinance.dto.SupplierDTO;
 import com.techzenacademy.TechFinance.dto.SupplierRequest;
+import com.techzenacademy.TechFinance.dto.page.PageResponse;
 import com.techzenacademy.TechFinance.entity.Supplier;
 import com.techzenacademy.TechFinance.entity.User;
 import com.techzenacademy.TechFinance.repository.SupplierRepository;
 import com.techzenacademy.TechFinance.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
@@ -33,6 +36,31 @@ public class SupplierService {
         return supplierRepository.findByIsActiveTrue().stream()
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());
+    }
+    
+    /**
+     * Filter suppliers with pagination
+     * 
+     * @param name Filter by name containing this string (case-insensitive)
+     * @param pageable Pagination information
+     * @return PageResponse containing filtered suppliers
+     */
+    public PageResponse<SupplierDTO> getPagedSuppliers(String name, Pageable pageable) {
+        Page<Supplier> supplierPage;
+        
+        if (name != null && !name.trim().isEmpty()) {
+            // Sử dụng repository để lọc theo tên
+            supplierPage = supplierRepository.findByNameContainingIgnoreCase(name, pageable);
+        } else {
+            // Nếu không có filter, lấy tất cả với phân trang
+            supplierPage = supplierRepository.findAll(pageable);
+        }
+        
+        // Map kết quả sang DTO
+        Page<SupplierDTO> dtoPage = supplierPage.map(this::mapToDTO);
+        
+        // Trả về custom page response
+        return new PageResponse<>(dtoPage);
     }
     
     public SupplierDTO getSupplierById(Integer id) {
