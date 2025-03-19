@@ -81,30 +81,95 @@ const notification = reactive({
   type: 'success'
 })
 
+// Thêm state cho phân trang
+const pagination = reactive({
+  currentPage: 0,
+  totalPages: 0,
+  totalItems: 0,
+  pageSize: 8
+})
+
+// Thêm state cho sắp xếp
+const sorting = reactive({
+  field: 'id',
+  direction: 'asc'
+})
+
 // Load categories on component mount
 onMounted(async () => {
   await loadCategories()
 })
 
-async function loadCategories() {
-  loading.value = true
-  error.value = null
+// Sửa lại hàm loadCategories để đồng bộ với page từ API
+async function loadCategories(newPage = 0) {
+  loading.value = true;
+  error.value = null;
+  
+  // Đảm bảo newPage là số hợp lệ
+  const targetPage = parseInt(newPage);
+  const page = !isNaN(targetPage) ? targetPage : 0;
+  
   try {
-    categories.value = await incomeCategories.getAll(filters)
+    const result = await incomeCategories.getAll(
+      filters, 
+      page, 
+      pagination.pageSize,
+      sorting.field,
+      sorting.direction
+    );
+    
+    // console.log('API pagination response:', result);
+    
+    // Cập nhật dữ liệu
+    categories.value = result.content || [];
+    
+    // Sử dụng đúng dữ liệu từ API
+    if (result.page) {
+      pagination.currentPage = result.page.page; // Dùng result.page.page thay vì page.number
+      pagination.totalPages = result.page.totalPages;
+      pagination.totalItems = result.page.totalElement;
+    } else {
+      pagination.currentPage = page;
+      pagination.totalPages = Math.ceil((result.totalElement || 0) / pagination.pageSize);
+      pagination.totalItems = result.totalElement || 0;
+    }
+    
   } catch (err) {
-    error.value = 'Không thể tải danh mục. Vui lòng thử lại sau.'
-    console.error('Error loading categories:', err)
+    error.value = 'Không thể tải danh mục. Vui lòng thử lại sau.';
+    console.error('Error loading categories:', err);
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
-// Sửa resetFilters
+// Cải tiến hàm goToPage để đảm bảo tham số là số và trong phạm vi hợp lệ
+function goToPage(page) {
+  // Đảm bảo page là số
+  const targetPage = parseInt(page);
+  
+  // Kiểm tra nếu là số hợp lệ và trong khoảng cho phép
+  if (!isNaN(targetPage) && targetPage >= 0 && targetPage < pagination.totalPages) {
+    loadCategories(targetPage);
+  }
+}
+
+// Thêm hàm thay đổi sắp xếp
+function sortBy(field) {
+  if (sorting.field === field) {
+    sorting.direction = sorting.direction === 'asc' ? 'desc' : 'asc';
+  } else {
+    sorting.field = field;
+    sorting.direction = 'asc';
+  }
+  loadCategories(0); // Reset về trang đầu tiên khi thay đổi sắp xếp
+}
+
+// Sửa hàm reset filters để giữ nguyên phân trang
 function resetFilters() {
-  filters.name = ''
-  filters.isActive = null
-  // Xóa filters.createdAt = null
-  loadCategories()
+  filters.name = '';
+  filters.isActive = null;
+  pagination.currentPage = 0; // Reset về trang đầu tiên
+  loadCategories(0);
 }
 
 function openAddModal() {
@@ -289,12 +354,13 @@ const statusOptions = [
             <!-- Xóa bỏ filter item Ngày tạo -->
           </div>
           
+          <!-- Cập nhật sự kiện của nút Đặt lại và Tìm kiếm -->
           <div class="filter-actions">
-            <button @click="resetFilters" class="btn-outline">
+            <button @click.prevent="resetFilters" class="btn-outline">
               <i class="bi bi-arrow-repeat"></i>
               Đặt lại
             </button>
-            <button @click="loadCategories" class="btn-primary">
+            <button @click.prevent="loadCategories(0)" class="btn-primary">
               <i class="bi bi-search"></i>
               Tìm kiếm
             </button>
@@ -336,9 +402,21 @@ const statusOptions = [
           <table class="data-table">
             <thead>
               <tr>
-                <th>Tên danh mục</th>
-                <th>Mô tả</th>
-                <th>Trạng thái</th>
+                <th class="sortable" @click="sortBy('name')">
+                  Tên danh mục
+                  <i v-if="sorting.field === 'name'" 
+                     :class="['sort-icon', 'bi', sorting.direction === 'asc' ? 'bi-arrow-up' : 'bi-arrow-down']"></i>
+                </th>
+                <th class="sortable" @click="sortBy('description')">
+                  Mô tả
+                  <i v-if="sorting.field === 'description'" 
+                     :class="['sort-icon', 'bi', sorting.direction === 'asc' ? 'bi-arrow-up' : 'bi-arrow-down']"></i>
+                </th>
+                <th class="sortable" @click="sortBy('isActive')">
+                  Trạng thái
+                  <i v-if="sorting.field === 'isActive'" 
+                     :class="['sort-icon', 'bi', sorting.direction === 'asc' ? 'bi-arrow-up' : 'bi-arrow-down']"></i>
+                </th>
                 <th v-if="isAdmin" class="text-right">Thao tác</th>
               </tr>
             </thead>
@@ -378,6 +456,57 @@ const statusOptions = [
               </tr>
             </tbody>
           </table>
+        </div>
+        
+        <!-- Thêm phần này sau bảng danh sách categories -->
+        <div v-if="categories.length > 0" class="pagination-container">
+          <div class="pagination-info">
+            Hiển thị {{ categories.length }} trên tổng số {{ pagination.totalItems }} danh mục
+          </div>
+          
+          <div class="pagination-controls">
+            <button 
+              @click.prevent="goToPage(0)" 
+              :disabled="pagination.currentPage === 0"
+              class="pagination-btn"
+              title="Trang đầu"
+            >
+              <i class="bi bi-chevron-double-left"></i>
+            </button>
+            
+            <!-- Nút trở lại trang trước -->
+            <button 
+              @click.prevent="goToPage(pagination.currentPage - 1)" 
+              :disabled="pagination.currentPage <= 0"
+              class="pagination-btn"
+              title="Trang trước"
+            >
+              <i class="bi bi-chevron-left"></i>
+            </button>
+            
+            <span class="pagination-text">
+              Trang {{ pagination.currentPage + 1 }} / {{ pagination.totalPages }}
+            </span>
+            
+            <!-- Nút đi đến trang sau -->
+            <button 
+              @click.prevent="goToPage(pagination.currentPage + 1)" 
+              :disabled="pagination.currentPage >= pagination.totalPages - 1"
+              class="pagination-btn"
+              title="Trang sau"
+            >
+              <i class="bi bi-chevron-right"></i>
+            </button>
+            
+            <button 
+              @click.prevent="goToPage(pagination.totalPages - 1)" 
+              :disabled="pagination.currentPage === pagination.totalPages - 1"
+              class="pagination-btn"
+              title="Trang cuối"
+            >
+              <i class="bi bi-chevron-double-right"></i>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -748,6 +877,7 @@ const statusOptions = [
   color: #4b5563;
   background-color: #f9fafb;
   letter-spacing: 0.05em;
+  cursor: pointer;
 }
 
 .data-table tr:last-child td {
@@ -1216,5 +1346,72 @@ const statusOptions = [
     opacity: 1;
     transform: translateX(0);
   }
+}
+
+/* PAGINATION STYLES */
+.pagination-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  border-top: 1px solid #e5e7eb;
+  background-color: #f9fafb;
+}
+
+.pagination-info {
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pagination-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  background-color: white;
+  color: #4b5563;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background-color: #f3f4f6;
+  color: #4f46e5;
+  border-color: #4f46e5;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pagination-text {
+  font-size: 0.875rem;
+  color: #4b5563;
+  padding: 0 0.5rem;
+}
+
+/* Thêm cursor pointer và hiệu ứng cho các header có thể sắp xếp */
+.data-table th.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.data-table th.sortable:hover {
+  background-color: #f1f5f9;
+}
+
+.sort-icon {
+  margin-left: 0.25rem;
+  font-size: 0.75rem;
 }
 </style>

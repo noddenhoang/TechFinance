@@ -3,21 +3,38 @@ import axios from 'axios'
 const BASE_URL = '/api/income-categories'
 
 export const incomeCategories = {
-  // Get all income categories with filters
-  async getAll(filters = {}) {
-    const params = new URLSearchParams();
-    
-    if (filters.name) {
-      params.append('name', filters.name);
+  // Cập nhật phương thức getAll để hỗ trợ phân trang
+  async getAll(filters = {}, page = 0, size = 8, sortField = 'id', sortDirection = 'asc') {
+    try {
+      const params = new URLSearchParams();
+      
+      // Thêm các filter
+      if (filters.name) {
+        params.append('name', filters.name);
+      }
+      
+      if (filters.isActive !== null && filters.isActive !== undefined) {
+        params.append('isActive', filters.isActive);
+      }
+      
+      // Thêm tham số phân trang
+      params.append('page', page.toString());
+      params.append('size', size.toString());
+      params.append('sort', sortField + ',' + sortDirection);
+      
+      const queryString = params.toString() ? `?${params.toString()}` : '';
+      const token = localStorage.getItem('token');
+      
+      const response = await axios.get(`${BASE_URL}${queryString}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching income categories:', error);
+      throw error;
     }
-    
-    if (filters.isActive !== null && filters.isActive !== undefined) {
-      params.append('isActive', filters.isActive);
-    }
-    
-    const queryString = params.toString() ? `?${params.toString()}` : '';
-    const response = await axios.get(`${BASE_URL}${queryString}`);
-    return response.data;
   },
 
   // Get active income categories only
