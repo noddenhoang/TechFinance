@@ -579,7 +579,7 @@ function getSortIcon(field) {
           <div class="filter-grid">
             <div class="filter-item">
               <label class="form-label">Khách hàng</label>
-              <select v-model="filters.customerId" class="form-input">
+              <select v-model="filters.customerId" class="form-select">
                 <option :value="null">Tất cả khách hàng</option>
                 <option v-for="customer in customersList" :key="customer.id" :value="customer.id">
                   {{ customer.name }}
@@ -589,7 +589,7 @@ function getSortIcon(field) {
             
             <div class="filter-item">
               <label class="form-label">Danh mục</label>
-              <select v-model="filters.categoryId" class="form-input">
+              <select v-model="filters.categoryId" class="form-select">
                 <option :value="null">Tất cả danh mục</option>
                 <option v-for="category in categoriesList" :key="category.id" :value="category.id">
                   {{ category.name }}
@@ -637,7 +637,7 @@ function getSortIcon(field) {
             
             <div class="filter-item">
               <label class="form-label">Trạng thái thanh toán</label>
-              <select v-model="filters.paymentStatus" class="form-input">
+              <select v-model="filters.paymentStatus" class="form-select">
                 <option v-for="option in paymentStatusOptions" :key="option.value" :value="option.value">
                   {{ option.label }}
                 </option>
@@ -718,6 +718,7 @@ function getSortIcon(field) {
                   </th>
                   <th>Khách hàng</th>
                   <th>Trạng thái</th>
+                  <th class="action-column text-center">Thao tác</th>
                 </tr>
               </thead>
               <tbody>
@@ -737,6 +738,31 @@ function getSortIcon(field) {
                       <i :class="[transaction.paymentStatus === 'RECEIVED' ? 'bi bi-check-circle' : 'bi bi-hourglass-split']"></i>
                       {{ formatPaymentStatus(transaction.paymentStatus) }}
                     </span>
+                  </td>
+                  <td class="action-column text-center">
+                    <div class="action-buttons">
+                      <button 
+                        @click.stop="showTransactionDetails(transaction)"
+                        class="btn-icon view-btn"
+                        title="Xem chi tiết"
+                      >
+                        <i class="bi bi-eye"></i>
+                      </button>
+                      <button 
+                        @click.stop="openEditModal(transaction)"
+                        class="btn-icon edit-btn"
+                        title="Chỉnh sửa"
+                      >
+                        <i class="bi bi-pencil-square"></i>
+                      </button>
+                      <button 
+                        @click.stop="openDeleteModal(transaction)"
+                        class="btn-icon delete-btn"
+                        title="Xóa"
+                      >
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               </tbody>
@@ -810,8 +836,8 @@ function getSortIcon(field) {
         </div>
         
         <!-- Transaction Details Modal -->
-        <div v-if="showDetails" class="modal-overlay details-modal-overlay">
-          <div class="modal-container details-modal-container">
+        <div v-if="showDetails" class="modal-overlay">
+          <div class="modal-container">
             <div class="modal-header">
               <h3 class="modal-title">
                 <i class="bi bi-info-circle"></i>
@@ -822,14 +848,14 @@ function getSortIcon(field) {
               </button>
             </div>
             
-            <div v-if="loading" class="modal-content">
+            <div v-if="loading" class="modal-body">
               <div class="card-empty-state">
                 <div class="loading-spinner"></div>
                 <p>Đang tải thông tin chi tiết...</p>
               </div>
             </div>
             
-            <div v-else-if="selectedTransaction" class="modal-content">
+            <div v-else-if="selectedTransaction" class="modal-body">
               <div class="detail-header">
                 <div class="transaction-avatar">
                   <i class="bi bi-cash-coin"></i>
@@ -886,17 +912,17 @@ function getSortIcon(field) {
                   <div class="detail-value description-value">{{ selectedTransaction.description || 'Không có mô tả' }}</div>
                 </div>
               </div>
-            </div>
-            
-            <div v-if="isAdmin && selectedTransaction" class="modal-actions">
-              <button @click="openEditModal(selectedTransaction)" class="btn-primary">
-                <i class="bi bi-pencil"></i>
-                Sửa
-              </button>
-              <button @click="openDeleteModal(selectedTransaction)" class="btn-outline btn-danger-outline">
-                <i class="bi bi-trash"></i>
-                Xóa
-              </button>
+              
+              <div v-if="isAdmin && selectedTransaction" class="modal-actions">
+                <button @click="openEditModal(selectedTransaction)" class="btn-primary">
+                  <i class="bi bi-pencil-square"></i>
+                  Sửa
+                </button>
+                <button @click="openDeleteModal(selectedTransaction)" class="btn-danger">
+                  <i class="bi bi-trash"></i>
+                  Xóa
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -913,22 +939,25 @@ function getSortIcon(field) {
           </button>
         </div>
         
-        <div class="modal-content">
+        <div class="modal-body">
           <div class="form-grid">
-            <div class="form-item">
-              <label class="form-label">Danh mục</label>
-              <select v-model="modalTransaction.categoryId" class="form-input" name="categoryId">
+            <div class="form-group">
+              <label class="form-label required">Danh mục</label>
+              <select v-model="modalTransaction.categoryId" class="form-select" name="categoryId">
                 <option :value="null">Chọn danh mục</option>
                 <option v-for="category in categoriesList" :key="category.id" :value="category.id">
                   {{ category.name }}
                 </option>
               </select>
-              <span v-if="modalErrors.categoryId" class="form-error">{{ modalErrors.categoryId }}</span>
+              <span v-if="modalErrors.categoryId" class="form-error">
+                <i class="bi bi-exclamation-circle"></i>
+                {{ modalErrors.categoryId }}
+              </span>
             </div>
             
-            <div class="form-item">
+            <div class="form-group">
               <label class="form-label">Khách hàng</label>
-              <select v-model="modalTransaction.customerId" class="form-input">
+              <select v-model="modalTransaction.customerId" class="form-select">
                 <option :value="null">Chọn khách hàng</option>
                 <option v-for="customer in customersList" :key="customer.id" :value="customer.id">
                   {{ customer.name }}
@@ -936,18 +965,21 @@ function getSortIcon(field) {
               </select>
             </div>
             
-            <div class="form-item">
-              <label class="form-label">Ngày giao dịch</label>
+            <div class="form-group">
+              <label class="form-label required">Ngày giao dịch</label>
               <input
                 v-model="modalTransaction.transactionDate"
                 type="date"
                 class="form-input"
               />
-              <span v-if="modalErrors.transactionDate" class="form-error">{{ modalErrors.transactionDate }}</span>
+              <span v-if="modalErrors.transactionDate" class="form-error">
+                <i class="bi bi-exclamation-circle"></i>
+                {{ modalErrors.transactionDate }}
+              </span>
             </div>
             
-            <div class="form-item">
-              <label class="form-label">Số tiền</label>
+            <div class="form-group">
+              <label class="form-label required">Số tiền</label>
               <input
                 v-model="modalTransaction.amount"
                 type="text"
@@ -955,18 +987,21 @@ function getSortIcon(field) {
                 @input="validateAmount"
                 placeholder="Nhập số tiền"
               />
-              <span v-if="modalErrors.amount" class="form-error">{{ modalErrors.amount }}</span>
+              <span v-if="modalErrors.amount" class="form-error">
+                <i class="bi bi-exclamation-circle"></i>
+                {{ modalErrors.amount }}
+              </span>
             </div>
             
-            <div class="form-item">
+            <div class="form-group">
               <label class="form-label">Trạng thái thanh toán</label>
-              <select v-model="modalTransaction.paymentStatus" class="form-input">
+              <select v-model="modalTransaction.paymentStatus" class="form-select">
                 <option value="PENDING">Chờ thanh toán</option>
                 <option value="RECEIVED">Đã nhận</option>
               </select>
             </div>
             
-            <div class="form-item">
+            <div class="form-group">
               <label class="form-label">Số tham chiếu</label>
               <input
                 v-model="modalTransaction.referenceNo"
@@ -974,182 +1009,104 @@ function getSortIcon(field) {
                 class="form-input"
                 placeholder="Nhập số tham chiếu"
               />
-              <span v-if="modalErrors.referenceNo" class="form-error">{{ modalErrors.referenceNo }}</span>
+              <span v-if="modalErrors.referenceNo" class="form-error">
+                <i class="bi bi-exclamation-circle"></i>
+                {{ modalErrors.referenceNo }}
+              </span>
             </div>
             
-            <div class="form-item">
+            <div class="form-group" style="grid-column: span 2;">
               <label class="form-label">Mô tả</label>
               <textarea
                 v-model="modalTransaction.description"
-                class="form-input"
+                class="form-textarea"
                 placeholder="Nhập mô tả"
+                rows="3"
               ></textarea>
             </div>
           </div>
-        </div>
-        
-        <div class="modal-actions">
-          <button @click="closeModal" class="btn-outline">
-            <i class="bi bi-x-lg"></i>
-            Hủy bỏ
-          </button>
-          <button @click="saveTransaction" class="btn-primary" :disabled="saving">
-            <i v-if="saving" class="bi bi-arrow-repeat loading-icon"></i>
-            <i v-else class="bi bi-save"></i>
-            Lưu
-          </button>
+          
+          <div class="modal-actions">
+            <button @click="closeModal" class="btn-outline">
+              <i class="bi bi-x-lg"></i>
+              Hủy bỏ
+            </button>
+            <button @click="saveTransaction" class="btn-primary" :disabled="saving">
+              <i v-if="saving" class="bi bi-arrow-repeat spinner"></i>
+              <i v-else class="bi bi-save"></i>
+              {{ saving ? 'Đang lưu...' : 'Lưu' }}
+            </button>
+          </div>
         </div>
       </div>
     </div>
     
     <!-- Delete Confirmation Modal -->
     <div v-if="showDeleteModal" class="modal-overlay">
-      <div class="modal-container">
+      <div class="modal-container modal-confirm">
         <div class="modal-header">
-          <h3 class="modal-title">Xóa giao dịch</h3>
+          <h3 class="modal-title">Xác nhận xóa</h3>
           <button @click="closeDeleteModal" class="btn-close" title="Đóng">
             <i class="bi bi-x-lg"></i>
           </button>
         </div>
         
-        <div class="modal-content">
-          <p>Bạn có chắc chắn muốn xóa giao dịch này không?</p>
-          <p class="modal-warning">Hành động này không thể hoàn tác.</p>
-        </div>
-        
-        <div class="modal-actions">
-          <button @click="closeDeleteModal" class="btn-outline">
-            <i class="bi bi-x-lg"></i>
-            Hủy bỏ
-          </button>
-          <button @click="deleteTransaction" class="btn-danger" :disabled="deleting">
-            <i v-if="deleting" class="bi bi-arrow-repeat loading-icon"></i>
-            <i v-else class="bi bi-trash"></i>
-            Xóa
-          </button>
+        <div class="modal-body text-center">
+          <div class="icon-warning">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+          </div>
+          <h4 class="confirm-title">Bạn có chắc chắn muốn xóa?</h4>
+          <p class="confirm-message">
+            Giao dịch này sẽ bị xóa vĩnh viễn.
+            <br>Hành động này không thể hoàn tác.
+          </p>
+          
+          <div class="modal-actions">
+            <button @click="closeDeleteModal" class="btn-outline">
+              <i class="bi bi-x-lg"></i>
+              Hủy bỏ
+            </button>
+            <button @click="deleteTransaction" class="btn-danger" :disabled="deleting">
+              <i v-if="deleting" class="bi bi-arrow-repeat spinner"></i>
+              <i v-else class="bi bi-trash"></i>
+              {{ deleting ? 'Đang xóa...' : 'Xóa' }}
+            </button>
+          </div>
         </div>
       </div>
     </div>
     
-    <!-- Notification -->
-    <div v-if="notification.show" class="notification" :class="notification.type">
-      <i :class="notification.type === 'success' ? 'bi bi-check-circle' : 'bi bi-exclamation-circle'"></i>
+    <!-- Toast Notification -->
+    <div 
+      v-if="notification.show"
+      :class="['toast-notification', notification.type]"
+    >
+      <i :class="[
+        notification.type === 'success' ? 'bi bi-check-circle-fill' : 'bi bi-exclamation-circle-fill'
+      ]"></i>
       <span>{{ notification.message }}</span>
     </div>
   </AppLayout>
 </template>
 
 <style scoped>
-.content-container {
-  padding: 2rem;
-  max-width: 1200px; /* Thêm độ rộng tối đa */
-  margin: 0 auto; /* Căn giữa container */
-}
+/* Component-specific styles only */
+/* All common styles have been moved to assets/styles/common.css */
 
-/* Sửa lỗi styling cho filter container */
-.filter-container {
-  background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  margin-bottom: 2rem;
-  overflow: hidden; /* Để tránh lỗi border-radius */
-}
-
-.filter-header {
-  display: flex;
-  align-items: center;
-  padding: 1rem 1.5rem; /* Thêm padding trái phải */
-  background-color: #f8fafc;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.filter-content {
-  display: flex;
-  flex-direction: column;
-  padding: 1.5rem;
-}
-
-/* Sửa styling cho filter grid responsive */
-.filter-grid {
+/* Modal layout customizations */
+.form-grid {
   display: grid;
+  grid-template-columns: 1fr;
   gap: 1rem;
-  grid-template-columns: 1fr; /* Mặc định 1 cột trên mobile */
 }
 
-@media (min-width: 769px) and (max-width: 1200px) {
-  .filter-grid {
-    grid-template-columns: repeat(2, 1fr); /* Hai cột trên tablet */
+@media (min-width: 640px) {
+  .form-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
-@media (min-width: 1201px) {
-  .filter-grid {
-    grid-template-columns: repeat(4, 1fr); /* Bốn cột trên desktop */
-  }
-}
-
-/* Sửa lỗi trong hiển thị form-input và select */
-.form-input, select.form-input {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.375rem;
-  background-color: white;
-  font-size: 0.875rem;
-  color: #1f2937;
-  transition: all 0.2s ease;
-}
-
-.form-input:focus, select.form-input:focus {
-  outline: none;
-  border-color: #4f46e5;
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
-}
-
-.form-input.error {
-  border-color: #ef4444;
-}
-
-/* Sửa lại thiết kế cho content-layout khi có details */
-.content-layout {
-  display: flex;
-  gap: 2rem;
-  flex-direction: column;
-  width: 100%;
-}
-
-/* Chỉnh sửa transactions-list để đảm bảo nó chiếm đủ không gian */
-.transactions-list {
-  width: 100%; /* Chiếm toàn bộ không gian có sẵn */
-  flex: 1;
-  min-width: 0; /* Quan trọng để tránh flex child overflow */
-}
-
-/* Sửa thiết kế content-layout khi có details */
-@media (min-width: 992px) {
-  .content-layout {
-    flex-direction: row; /* Trên desktop hiển thị theo hàng ngang */
-    align-items: flex-start; /* Đảm bảo các thành phần căn trên */
-  }
-}
-
-/* Sửa lại table-responsive để đảm bảo bảng không bị overflow */
-.table-responsive {
-  width: 100%;
-  overflow-x: auto;
-  min-width: 0; /* Quan trọng để tránh overflow */
-}
-
-/* Sửa lỗi width trong data-table */
-.data-table {
-  width: 100%;
-  min-width: 100%;
-  table-layout: fixed; /* Giúp kiểm soát độ rộng các cột tốt hơn */
-  border-collapse: separate;
-  border-spacing: 0;
-}
-
-/* Thiết lập độ rộng của các cột trong bảng */
+/* Specific column widths for this view's table */
 .data-table th:nth-child(1), 
 .data-table td:nth-child(1) {
   width: 12%; /* Ngày giao dịch */
@@ -1175,710 +1132,74 @@ function getSortIcon(field) {
   width: 18%; /* Trạng thái */
 }
 
-.action-column {
-  width: 10%; /* Thao tác */
-}
-
-/* Sửa notification để tránh lỗi z-index và positioning */
-.notification {
-  position: fixed;
-  bottom: 2rem;
-  right: 2rem;
-  min-width: 300px;
-  padding: 1rem;
-  border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  z-index: 9999; /* Đảm bảo hiển thị trên cùng */
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  background-color: white;
-  animation: slide-in 0.3s ease-out;
-}
-
-@keyframes slide-in {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-/* Sửa phần còn lại của CSS giữ nguyên */
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-}
-
-.page-title {
-  color: #111827;
-  margin: 0;
-}
-
-.page-description {
-  color: #6b7280;
-  margin: 0;
-}
-
-.header-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.btn-primary {
-  background-color: #3b82f6;
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-}
-
-.btn-primary i {
-  margin-right: 0.5rem;
-}
-
-.btn-outline {
-  background-color: white;
-  color: #3b82f6;
-  border: 1px solid #3b82f6;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-}
-
-.btn-outline i {
-  margin-right: 0.5rem;
-}
-
-.btn-danger {
-  background-color: #ef4444;
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-}
-
-.btn-danger i {
-  margin-right: 0.5rem;
-}
-
-.btn-danger-outline {
-  background-color: white;
-  color: #ef4444;
-  border: 1px solid #ef4444;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-}
-
-.btn-danger-outline i {
-  margin-right: 0.5rem;
-}
-
-.btn-close {
-  background-color: transparent;
-  color: #6b7280;
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-}
-
-.btn-close i {
-  font-size: 1.25rem;
-}
-
-.filter-container.minimized {
-  display: none;
-}
-
-.filter-header h3 {
-  margin: 0;
-  color: #111827;
-}
-
-.filter-content {
-  display: flex;
-  flex-direction: column;
-}
-
-.filter-grid {
-  display: grid;
-  gap: 1rem;
-}
-
-.filter-item {
-  display: flex;
-  flex-direction: column;
-}
-
-.filter-item label {
-  color: #6b7280;
-  margin-bottom: 0.5rem;
-}
-
-.filter-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 1rem;
-}
-
-.content-layout.with-details .transactions-list {
-  flex: 1;
-}
-
-.content-layout.with-details .transaction-details {
-  flex: 1;
-}
-
-.card {
-  background-color: white;
-  padding: 1.5rem;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  width: 100%; /* Đảm bảo card chiếm toàn bộ không gian có sẵn */
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-}
-
-.card-title {
-  color: #111827;
-  margin: 0;
-}
-
-.result-count {
-  color: #6b7280;
-}
-
-.card-empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 200px;
-  text-align: center;
-}
-
-.card-empty-state.error {
-  color: #ef4444;
-}
-
-.card-empty-state .loading-spinner {
-  width: 2rem;
-  height: 2rem;
-  border: 4px solid #d1d5db;
-  border-top: 4px solid #3b82f6;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-.card-empty-state .error-icon {
-  font-size: 2rem;
-  margin-bottom: 0.5rem;
-}
-
-.card-empty-state .empty-icon {
-  font-size: 2rem;
-  margin-bottom: 0.5rem;
-}
-
-.card-empty-state .empty-description {
-  color: #6b7280;
-}
-
-.data-table th,
-.data-table td {
-  padding: 0.75rem;
-  border-bottom: 1px solid #d1d5db;
-}
-
-.data-table td {
-  color: #111827;
-}
-
-.data-table .amount-cell {
-  text-align: right;
-}
-
-.data-table .action-column {
-  width: 100px;
-}
-
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.875rem;
-}
-
-.status-badge.active {
-  background-color: #d1fae5;
-  color: #10b981;
-}
-
-.status-badge.pending {
-  background-color: #fef3c7;
-  color: #f59e0b;
-}
-
-.status-badge i {
-  margin-right: 0.25rem;
-}
-
-.pagination-container {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 1rem;
-}
-
-.pagination-info {
-  color: #6b7280;
-}
-
-.pagination-controls {
-  display: flex;
-  align-items: center;
-}
-
-.pagination-btn {
-  background-color: white;
-  color: #6b7280;
-  border: 1px solid #d1d5db;
-  padding: 0.5rem;
-  border-radius: 4px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-}
-
-.pagination-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-.pagination-btn i {
-  font-size: 1rem;
-}
-
-.pagination-text {
-  color: #6b7280;
-  margin: 0 0.5rem;
-}
-
-.transaction-summary {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 1rem;
-}
-
-.summary-item {
-  display: flex;
-  align-items: center;
-}
-
-.summary-label {
-  color: #6b7280;
-  margin-right: 0.5rem;
-}
-
-.summary-value {
-  color: #111827;
-}
-
-.summary-value.received {
-  color: #10b981;
-}
-
-.summary-value.pending {
-  color: #f59e0b;
-}
-
-.transaction-details {
-  flex: 1;
-}
-
-.transaction-details .card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.transaction-details .card-title {
-  color: #111827;
-  margin: 0;
-}
-
-.transaction-details .btn-close {
-  background-color: transparent;
-  color: #6b7280;
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-}
-
-.transaction-details .btn-close i {
-  font-size: 1.25rem;
-}
-
-.transaction-details-content {
-  display: flex;
-  flex-direction: column;
-}
-
-.detail-header {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-bottom: 2rem;
-  text-align: center;
-}
-
+/* Transaction detail specific styles */
 .transaction-avatar {
-  background-color: #f3f4f6;
-  color: #3b82f6;
-  border-radius: 50%;
   width: 4rem;
   height: 4rem;
+  border-radius: 50%;
+  background-color: #e0e7ff;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 1rem;
+  margin: 0 auto 1rem;
 }
 
 .transaction-avatar i {
   font-size: 2rem;
+  color: #4f46e5;
 }
 
 .transaction-amount {
-  font-size: 1.75rem; /* Tăng kích thước chữ */
-  font-weight: 700; /* Đậm hơn */
-  color: #111827;
-  margin: 0 0 0.25rem 0;
-}
-
-.transaction-date {
-  color: #6b7280;
-  margin: 0;
-}
-
-.detail-section {
-  margin-bottom: 0; /* Giảm khoảng cách dưới vì đã bỏ phần thông tin hệ thống */
-  padding-bottom: 0.5rem;
-}
-
-.detail-section-title {
-  color: #111827;
-  margin: 0 0 0.5rem 0;
-}
-
-.detail-row {
-  display: flex;
-  align-items: center;
-  margin-bottom: 0.5rem;
-}
-
-.detail-label {
-  color: #6b7280;
-  margin-right: 0.5rem;
-  display: flex;
-  align-items: center;
-}
-
-.detail-label i {
-  margin-right: 0.25rem;
-}
-
-.detail-value {
-  color: #111827;
-  font-weight: 500; /* Làm đậm giá trị */
-}
-
-.detail-actions {
-  display: flex;
-  flex-direction: row; /* Đảm bảo nằm ngang */
-  justify-content: flex-start; /* Căn trái */
-  gap: 0.75rem; /* Khoảng cách giữa các nút */
-  margin-top: 1.5rem; /* Thêm khoảng cách phía trên */
-  padding-top: 1rem; /* Thêm padding phía trên */
-  border-top: 1px solid #e5e7eb; /* Thêm đường ngăn cách */
-  width: 100%; /* Đảm bảo chiếm toàn bộ chiều rộng */
-}
-
-/* Điều chỉnh kích thước nút trong detail-actions */
-.detail-actions button {
-  min-width: 80px; /* Giảm kích thước nút */
-  padding: 0.3rem 0.5rem; /* Giảm padding */
-  font-size: 0.75rem; /* Giảm kích thước chữ */
-  justify-content: center; /* Căn giữa nội dung button */
-  height: 30px; /* Đặt chiều cao cố định */
-  flex: 0 0 auto; /* Ngăn không cho nút co giãn */
-}
-
-.detail-actions button i {
-  font-size: 0.75rem; /* Giảm kích thước icon */
-  margin-right: 0.25rem; /* Giảm khoảng cách giữa icon và text */
-}
-
-/* Chỉ sử dụng flex-direction: column trên màn hình rất nhỏ */
-@media (max-width: 359px) {
-  .detail-actions {
-    flex-direction: column; /* Stack buttons on very small screens */
-    width: 100%;
-  }
-  
-  .detail-actions button {
-    width: 100%; /* Full width buttons on very small screens */
-    margin-bottom: 0.5rem;
-  }
-}
-
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal-container {
-  background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-  width: 100%;
-  max-width: 650px;
-  max-height: 90vh;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 1.5rem;
-  background-color: #f8fafc;
-  border-bottom: 1px solid #e5e7eb;
-  position: sticky;
-  top: 0;
-  z-index: 2;
-}
-
-.modal-title {
-  margin: 0;
-  font-size: 1.25rem;
-  color: #111827;
-}
-
-.modal-content {
-  padding: 1.5rem;
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  padding: 1rem 1.5rem;
-  background-color: #f8fafc;
-  border-top: 1px solid #e5e7eb;
-  gap: 0.75rem;
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: 1fr; /* Default is single column */
-  gap: 1rem;
-}
-
-@media (min-width: 640px) {
-  .form-grid {
-    grid-template-columns: repeat(2, 1fr); /* Two columns on wider screens */
-  }
-}
-
-/* Make description textarea span full width */
-.form-grid .form-item:last-child {
-  grid-column: 1 / -1;
-}
-
-.form-item {
-  display: flex;
-  flex-direction: column;
-}
-
-.form-label {
-  color: #6b7280;
-  margin-bottom: 0.5rem;
-}
-
-.form-error {
-  color: #ef4444;
-  font-size: 0.875rem;
-  margin-top: 0.25rem;
-}
-
-.modal-warning {
-  color: #ef4444;
-  font-size: 0.875rem;
-  font-style: italic;
-}
-
-.loading-icon {
-  animation: spin 1s linear infinite;
-}
-
-.notification.success {
-  border-left: 4px solid #10b981;
-}
-
-.notification.error {
-  border-left: 4px solid #ef4444;
-}
-
-.notification i {
   font-size: 1.5rem;
-}
-
-.notification span {
-  color: #111827;
-}
-
-@media (max-width: 767px) {
-  .content-layout {
-    flex-direction: column;
-  }
-  
-  .transactions-list.minimized {
-    display: none;
-  }
-  
-  .transaction-details {
-    width: 100%;
-  }
-  
-  .transaction-summary {
-    flex-direction: column;
-    gap: 0.75rem;
-  }
-  
-  .summary-item {
-    justify-content: space-between;
-  }
-  
-  .pagination-container {
-    flex-direction: column;
-    gap: 1rem;
-  }
-}
-
-/* Thêm style cho modal chi tiết */
-.details-modal-container {
-  max-width: 550px; /* Giảm độ rộng vì ít thông tin hơn */
-}
-
-.details-modal-overlay {
-  z-index: 999; /* Đảm bảo hiển thị dưới modal thêm/sửa */
-}
-
-.detail-header {
-  padding: 1rem 0;
-  margin-bottom: 1.5rem;
-  align-items: center;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 0.25rem;
   text-align: center;
 }
 
-/* Đảm bảo mô tả dài không bị cắt */
-.description-value {
-  white-space: pre-wrap; 
-  word-break: break-word;
+.transaction-date {
+  color: #64748b;
+  margin: 0;
+  text-align: center;
 }
 
-/* Sửa hiển thị của các dòng thông tin */
-.detail-row {
-  display: flex;
-  flex-direction: column; /* Hiển thị label trên, value dưới trên mobile */
+.detail-section {
+  margin: 1.5rem 0;
+}
+
+.detail-section-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #4b5563;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   margin-bottom: 1rem;
 }
 
+.detail-row {
+  display: flex;
+  margin-bottom: 0.75rem;
+}
+
 .detail-label {
+  min-width: 8rem;
   color: #6b7280;
-  margin-bottom: 0.25rem;
-  font-weight: 500;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
 }
 
 .detail-value {
-  color: #111827;
+  flex: 1;
+  color: #1e293b;
 }
 
-/* Responsive cho desktop */
-@media (min-width: 768px) {
-  .detail-row {
-    flex-direction: row; /* Hiển thị label và value trên cùng một dòng */
-    align-items: flex-start;
-  }
-  
-  .detail-label {
-    width: 150px; /* Chiều rộng cố định cho phần label */
-    padding-right: 1rem;
-  }
-  
-  .detail-value {
-    flex: 1; /* Chiếm hết phần còn lại */
-  }
+.detail-label i {
+  color: #6366f1;
 }
 
-/* Sửa nút trong modal-actions */
-.modal-actions button {
-  min-width: 100px;
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
-}
-
-.action-buttons .btn-outline.btn-icon {
-  width: 28px; /* Giảm kích thước */
-  height: 28px; /* Giảm kích thước */
-  padding: 0;
-  margin: 0 2px;
-}
-
-.action-buttons .btn-icon i {
-  font-size: 0.75rem; /* Icon nhỏ hơn */
-  margin: 0;
+.description-value {
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 </style>
