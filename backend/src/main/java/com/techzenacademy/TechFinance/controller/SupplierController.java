@@ -11,6 +11,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -43,10 +44,10 @@ public class SupplierController {
     }
     
     // Giữ nguyên các endpoint hiện có
-    @GetMapping("/active")
-    public ResponseEntity<List<SupplierDTO>> getActiveSuppliers() {
-        return ResponseEntity.ok(supplierService.getActiveSuppliers());
-    }
+    // @GetMapping("/active")
+    // public ResponseEntity<List<SupplierDTO>> getActiveSuppliers() {
+    //     return ResponseEntity.ok(supplierService.getActiveSuppliers());
+    // }
     
     @GetMapping("/{id}")
     public ResponseEntity<SupplierDTO> getSupplierById(@PathVariable("id") Integer id) {
@@ -54,11 +55,13 @@ public class SupplierController {
     }
     
     @PostMapping
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
     public ResponseEntity<SupplierDTO> createSupplier(@Valid @RequestBody SupplierRequest request) {
         return new ResponseEntity<>(supplierService.createSupplier(request), HttpStatus.CREATED);
     }
     
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
     public ResponseEntity<SupplierDTO> updateSupplier(
             @PathVariable("id") Integer id, 
             @RequestBody SupplierRequest request) {
@@ -66,6 +69,7 @@ public class SupplierController {
     }
     
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
     public ResponseEntity<Void> deleteSupplier(@PathVariable("id") Integer id) {
         supplierService.deleteSupplier(id);
         return ResponseEntity.noContent().build();
