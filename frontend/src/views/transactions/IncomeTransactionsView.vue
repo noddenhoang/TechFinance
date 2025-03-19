@@ -155,10 +155,12 @@ async function loadTransactions(newPage = 0) {
     // Update data and pagination info
     transactionsList.value = result.content || [];
     
-    // Update pagination info
-    pagination.currentPage = result.pageNumber;
-    pagination.totalPages = result.totalPages;
-    pagination.totalItems = result.totalElements;
+    // Cập nhật lại cách truy cập thông tin phân trang
+    if (result.page) {
+      pagination.currentPage = result.page.page;
+      pagination.totalPages = result.page.totalPages;
+      pagination.totalItems = result.page.totalElement;
+    }
     
     // Close details view when changing pages
     closeDetails();
