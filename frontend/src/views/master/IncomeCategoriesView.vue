@@ -1,17 +1,45 @@
 <script setup>
-import { ref, reactive, onMounted, nextTick } from 'vue'
+import { ref, reactive, onMounted, nextTick, computed } from 'vue'
 import AppLayout from '../../components/layouts/AppLayout.vue'
 import { incomeCategories } from '../../api/incomeCategories'
 import { useAuthStore } from '../../stores/auth'
 
 // Store và xác thực
 const auth = useAuthStore()
-// Debug auth store để xem cấu trúc dữ liệu
-console.log('Auth store content:', auth)
 
-// Tạm thời cho phép tất cả người dùng có quyền admin để kiểm tra chức năng UI
-// Sau khi xác định đúng cấu trúc quyền, sẽ thay thế bằng cách kiểm tra thực tế
-const isAdmin = ref(true) // Tạm thời luôn là true để test giao diện
+// Sửa lại logic kiểm tra admin - BỎ HARDCODE VÀ KIỂM TRA ĐÚNG CẤU TRÚC
+const isAdmin = computed(() => {
+  // Debug dữ liệu auth nếu cần
+  console.log('Auth user data:', auth.user)
+  console.log('Auth authorities:', auth.user?.authorities)
+  
+  // Kiểm tra theo nhiều cấu trúc có thể có
+  if (auth.user?.authorities && Array.isArray(auth.user.authorities)) {
+    // Trường hợp 1: authorities là mảng string
+    if (typeof auth.user.authorities[0] === 'string') {
+      return auth.user.authorities.includes('ROLE_ADMIN')
+    }
+    
+    // Trường hợp 2: authorities là mảng object có thuộc tính authority
+    if (typeof auth.user.authorities[0] === 'object') {
+      return auth.user.authorities.some(auth => 
+        auth.authority === 'ROLE_ADMIN' || auth === 'ROLE_ADMIN'
+      )
+    }
+  }
+  
+  // Trường hợp 3: role trực tiếp trên user
+  if (auth.user?.role === 'ROLE_ADMIN' || auth.user?.role === 'admin') {
+    return true
+  }
+  
+  // Không tìm thấy quyền admin
+  return false
+})
+
+// Log để gỡ lỗi nếu cần
+console.log('User authorities:', auth.user?.authorities);
+console.log('Is admin:', isAdmin.value);
 
 // Data state
 const categories = ref([])
@@ -211,7 +239,9 @@ const statusOptions = [
           <p class="page-description">Quản lý các danh mục phân loại thu nhập của doanh nghiệp</p>
         </div>
         
+        <!-- Chỉ hiện nút thêm mới khi là admin -->
         <button 
+          v-if="isAdmin"
           @click="openAddModal"
           class="btn-add"
         >
@@ -320,7 +350,7 @@ const statusOptions = [
                 <th>Mô tả</th>
                 <th>Trạng thái</th>
                 <th>Ngày tạo</th>
-                <th class="text-right">Thao tác</th>
+                <th v-if="isAdmin" class="text-right">Thao tác</th>
               </tr>
             </thead>
             <tbody>
@@ -337,7 +367,7 @@ const statusOptions = [
                   </span>
                 </td>
                 <td>{{ formatDate(category.createdAt) }}</td>
-                <td class="actions-cell">
+                <td v-if="isAdmin" class="actions-cell">
                   <div class="action-buttons">
                     <button 
                       @click="openEditModal(category)"
@@ -1028,5 +1058,23 @@ const statusOptions = [
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* Thêm vào phần style */
+.no-permission {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  font-style: italic;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.no-permission i {
+  margin-right: 0.25rem;
+}
+
+.text-muted {
+  color: #9ca3af;
 }
 </style>
