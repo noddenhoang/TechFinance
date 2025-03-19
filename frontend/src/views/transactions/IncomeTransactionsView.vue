@@ -585,10 +585,6 @@ function getSortIcon(field) {
           <p class="page-description">Xem và quản lý các giao dịch thu nhập</p>
         </div>
         <div class="header-actions">
-          <button @click="exportData" class="btn-outline" v-if="transactionsList.length > 0">
-            <i class="bi bi-download"></i>
-            Xuất Excel
-          </button>
           <button v-if="isAdmin" @click="openAddModal" class="btn-primary">
             <i class="bi bi-plus-lg"></i>
             Thêm giao dịch
@@ -1107,8 +1103,178 @@ function getSortIcon(field) {
 <style scoped>
 .content-container {
   padding: 2rem;
+  max-width: 1200px; /* Thêm độ rộng tối đa */
+  margin: 0 auto; /* Căn giữa container */
 }
 
+/* Sửa lỗi styling cho filter container */
+.filter-container {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
+  overflow: hidden; /* Để tránh lỗi border-radius */
+}
+
+.filter-header {
+  display: flex;
+  align-items: center;
+  padding: 1rem 1.5rem; /* Thêm padding trái phải */
+  background-color: #f8fafc;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.filter-content {
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+}
+
+/* Sửa styling cho filter grid responsive */
+.filter-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr; /* Mặc định 1 cột trên mobile */
+}
+
+@media (min-width: 769px) and (max-width: 1200px) {
+  .filter-grid {
+    grid-template-columns: repeat(2, 1fr); /* Hai cột trên tablet */
+  }
+}
+
+@media (min-width: 1201px) {
+  .filter-grid {
+    grid-template-columns: repeat(4, 1fr); /* Bốn cột trên desktop */
+  }
+}
+
+/* Sửa lỗi trong hiển thị form-input và select */
+.form-input, select.form-input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  background-color: white;
+  font-size: 0.875rem;
+  color: #1f2937;
+  transition: all 0.2s ease;
+}
+
+.form-input:focus, select.form-input:focus {
+  outline: none;
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+}
+
+/* Sửa lại thiết kế cho content-layout khi có details */
+.content-layout {
+  display: flex;
+  gap: 2rem;
+  flex-direction: column; /* Mặc định stack vertically trên mobile */
+}
+
+@media (min-width: 992px) {
+  .content-layout {
+    flex-direction: row; /* Trên desktop hiển thị theo hàng ngang */
+  }
+  
+  .content-layout.with-details .transactions-list {
+    flex: 3; /* Phân bổ không gian, list chiếm 3/5 */
+  }
+  
+  .content-layout.with-details .transaction-details {
+    flex: 2; /* Details chiếm 2/5 */
+    position: sticky;
+    top: 1rem;
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+  }
+}
+
+/* Sửa table responsive */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.data-table {
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.data-table th,
+.data-table td {
+  padding: 0.75rem;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: left;
+}
+
+.data-table th {
+  background-color: #f9fafb;
+  font-weight: 600;
+  color: #4b5563;
+}
+
+/* Sửa cho sortable columns */
+.sortable-column {
+  cursor: pointer;
+  position: relative;
+  padding-right: 1.5rem; /* Tạo không gian cho icon sort */
+}
+
+.sortable-column i {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* Sửa lỗi transaction-row và hover effect */
+.transaction-row {
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.transaction-row:hover {
+  background-color: #f9fafb;
+}
+
+.transaction-row.active {
+  background-color: #eff6ff; /* Xanh nhạt cho selected row */
+  border-left: 3px solid #3b82f6;
+}
+
+/* Sửa notification để tránh lỗi z-index và positioning */
+.notification {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  min-width: 300px;
+  padding: 1rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  z-index: 9999; /* Đảm bảo hiển thị trên cùng */
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background-color: white;
+  animation: slide-in 0.3s ease-out;
+}
+
+@keyframes slide-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Sửa phần còn lại của CSS giữ nguyên */
 .page-header {
   display: flex;
   justify-content: space-between;
@@ -1204,22 +1370,8 @@ function getSortIcon(field) {
   font-size: 1.25rem;
 }
 
-.filter-container {
-  background-color: white;
-  padding: 1.5rem;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  margin-bottom: 2rem;
-}
-
 .filter-container.minimized {
   display: none;
-}
-
-.filter-header {
-  display: flex;
-  align-items: center;
-  margin-bottom: 1rem;
 }
 
 .filter-header h3 {
@@ -1234,7 +1386,6 @@ function getSortIcon(field) {
 
 .filter-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
   gap: 1rem;
 }
 
@@ -1248,21 +1399,10 @@ function getSortIcon(field) {
   margin-bottom: 0.5rem;
 }
 
-.filter-item .form-input {
-  padding: 0.5rem;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-}
-
 .filter-actions {
   display: flex;
   justify-content: flex-end;
   margin-top: 1rem;
-}
-
-.content-layout {
-  display: flex;
-  gap: 2rem;
 }
 
 .content-layout.with-details .transactions-list {
@@ -1341,24 +1481,10 @@ function getSortIcon(field) {
   color: #6b7280;
 }
 
-.table-responsive {
-  overflow-x: auto;
-}
-
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
 .data-table th,
 .data-table td {
   padding: 0.75rem;
   border-bottom: 1px solid #d1d5db;
-}
-
-.data-table th {
-  color: #6b7280;
-  text-align: left;
 }
 
 .data-table td {
@@ -1371,14 +1497,6 @@ function getSortIcon(field) {
 
 .data-table .action-column {
   width: 100px;
-}
-
-.transaction-row {
-  cursor: pointer;
-}
-
-.transaction-row.active {
-  background-color: #f3f4f6;
 }
 
 .status-badge {
@@ -1583,34 +1701,63 @@ function getSortIcon(field) {
 
 .modal-container {
   background-color: white;
-  padding: 1.5rem;
   border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  width: 500px;
-  max-width: 100%;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  width: 100%;
+  max-width: 650px;
+  max-height: 90vh;
+  overflow-y: auto;
+  margin: 2rem;
+  display: flex;
+  flex-direction: column;
 }
 
 .modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
+  padding: 1rem 1.5rem;
+  background-color: #f8fafc;
+  border-bottom: 1px solid #e5e7eb;
+  position: sticky;
+  top: 0;
+  z-index: 2;
 }
 
 .modal-title {
-  color: #111827;
   margin: 0;
+  font-size: 1.25rem;
+  color: #111827;
 }
 
 .modal-content {
+  padding: 1.5rem;
+}
+
+.modal-actions {
   display: flex;
-  flex-direction: column;
+  justify-content: flex-end;
+  padding: 1rem 1.5rem;
+  background-color: #f8fafc;
+  border-top: 1px solid #e5e7eb;
+  gap: 0.75rem;
 }
 
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: 1fr; /* Default is single column */
   gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .form-grid {
+    grid-template-columns: repeat(2, 1fr); /* Two columns on wider screens */
+  }
+}
+
+/* Make description textarea span full width */
+.form-grid .form-item:last-child {
+  grid-column: 1 / -1;
 }
 
 .form-item {
@@ -1623,40 +1770,14 @@ function getSortIcon(field) {
   margin-bottom: 0.5rem;
 }
 
-.form-input {
-  padding: 0.5rem;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-}
-
 .form-error {
   color: #ef4444;
   font-size: 0.875rem;
   margin-top: 0.25rem;
 }
 
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 1rem;
-}
-
 .loading-icon {
   animation: spin 1s linear infinite;
-}
-
-.notification {
-  position: fixed;
-  bottom: 1rem;
-  right: 1rem;
-  background-color: white;
-  padding: 1rem;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  z-index: 1000;
 }
 
 .notification.success {

@@ -1,32 +1,50 @@
 /**
- * Định dạng số tiền theo định dạng tiền tệ Việt Nam
- * @param {number} amount - Số tiền cần định dạng
- * @param {string} currency - Đơn vị tiền tệ (mặc định là VND)
- * @returns {string} Chuỗi định dạng
+ * Format a number as currency
+ * @param {number|string} value - The number to format
+ * @param {string} locale - Locale for formatting (default: 'vi-VN')
+ * @param {string} currency - Currency code (default: 'VND')
+ * @returns {string} Formatted currency string
  */
-export function formatCurrency(amount, currency = 'VND') {
-  if (amount === null || amount === undefined) return '';
+export function formatCurrency(value, locale = 'vi-VN', currency = 'VND') {
+  if (value === null || value === undefined) {
+    return '';
+  }
   
-  const formatter = new Intl.NumberFormat('vi-VN', {
+  // Convert string to number if needed
+  const numValue = typeof value === 'string' ? parseFloat(value) : value;
+  
+  // Return empty string for invalid numbers
+  if (isNaN(numValue)) {
+    return '';
+  }
+  
+  return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency: currency,
-    minimumFractionDigits: 0
-  });
-  
-  return formatter.format(amount);
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(numValue);
 }
 
 /**
- * Định dạng ngày theo định dạng Việt Nam (DD/MM/YYYY)
- * @param {string|Date} date - Ngày cần định dạng
- * @returns {string} Chuỗi ngày đã định dạng
+ * Format a date string to localized format
+ * @param {string} dateString - ISO date string
+ * @param {string} locale - Locale for formatting (default: 'vi-VN')
+ * @returns {string} Formatted date string
  */
-export function formatDate(date) {
-  if (!date) return '';
+export function formatDate(dateString, locale = 'vi-VN') {
+  if (!dateString) {
+    return '';
+  }
   
-  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  const date = new Date(dateString);
   
-  return dateObj.toLocaleDateString('vi-VN', {
+  // Check if date is valid
+  if (isNaN(date.getTime())) {
+    return '';
+  }
+  
+  return date.toLocaleDateString(locale, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric'

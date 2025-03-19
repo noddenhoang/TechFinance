@@ -122,73 +122,7 @@ export const incomeTransactions = {
       console.error(`Error deleting transaction ${id}:`, error);
       throw error;
     }
-  },
-  
-  // Export transactions to Excel/CSV (cần thực hiện thêm phần backend)
-  async exportData(filters = {}) {
-    try {
-      const params = new URLSearchParams();
-      
-      // Add filters
-      if (filters.customerId) {
-        params.append('customerId', filters.customerId);
-      }
-      
-      if (filters.categoryId) {
-        params.append('categoryId', filters.categoryId);
-      }
-      
-      if (filters.startDate) {
-        params.append('startDate', filters.startDate);
-      }
-      
-      if (filters.endDate) {
-        params.append('endDate', filters.endDate);
-      }
-      
-      if (filters.minAmount) {
-        params.append('minAmount', filters.minAmount);
-      }
-      
-      if (filters.maxAmount) {
-        params.append('maxAmount', filters.maxAmount);
-      }
-      
-      if (filters.paymentStatus) {
-        params.append('paymentStatus', filters.paymentStatus);
-      }
-      
-      if (filters.referenceNo) {
-        params.append('referenceNo', filters.referenceNo);
-      }
-      
-      const queryString = params.toString() ? `?${params.toString()}` : '';
-      const token = localStorage.getItem('token');
-      
-      const response = await axios.get(`${BASE_URL}/export${queryString}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        responseType: 'blob'
-      });
-      
-      // Tạo URL tạm thời cho blob
-      const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      const url = window.URL.createObjectURL(blob);
-      
-      // Tạo link tải xuống
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `income-transactions-${new Date().toISOString().slice(0,10)}.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      a.remove();
-      
-      return true;
-    } catch (error) {
-      console.error('Error exporting transactions:', error);
-      throw error;
-    }
   }
+  
+  // Đã xóa phương thức exportData
 };
