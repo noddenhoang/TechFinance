@@ -46,11 +46,11 @@ const categories = ref([])
 const loading = ref(true)
 const error = ref(null)
 
-// Filter state
+// Sửa filter state
 const filters = reactive({
   name: '',
-  isActive: null,
-  createdAt: null
+  isActive: null
+  // Xóa createdAt
 })
 
 // Modal states
@@ -99,10 +99,11 @@ async function loadCategories() {
   }
 }
 
+// Sửa resetFilters
 function resetFilters() {
   filters.name = ''
   filters.isActive = null
-  filters.createdAt = null
+  // Xóa filters.createdAt = null
   loadCategories()
 }
 
@@ -285,17 +286,7 @@ const statusOptions = [
               </div>
             </div>
             
-            <div class="filter-item">
-              <label class="form-label">Ngày tạo</label>
-              <div class="input-icon-wrapper">
-                <i class="bi bi-calendar-date input-icon-left"></i>
-                <input
-                  v-model="filters.createdAt"
-                  type="date"
-                  class="form-input has-icon"
-                />
-              </div>
-            </div>
+            <!-- Xóa bỏ filter item Ngày tạo -->
           </div>
           
           <div class="filter-actions">
@@ -348,7 +339,6 @@ const statusOptions = [
                 <th>Tên danh mục</th>
                 <th>Mô tả</th>
                 <th>Trạng thái</th>
-                <th>Ngày tạo</th>
                 <th v-if="isAdmin" class="text-right">Thao tác</th>
               </tr>
             </thead>
@@ -367,7 +357,6 @@ const statusOptions = [
                     {{ category.isActive ? 'Hoạt động' : 'Không hoạt động' }}
                   </span>
                 </td>
-                <td>{{ formatDate(category.createdAt) }}</td>
                 <td v-if="isAdmin" class="actions-cell">
                   <div class="action-buttons">
                     <button 

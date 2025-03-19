@@ -11,7 +11,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -30,11 +29,11 @@ public class IncomeCategoryService {
                 .collect(Collectors.toList());
     }
     
-    public List<IncomeCategoryDTO> getActiveCategories() {
-        return incomeCategoryRepository.findByIsActiveTrue().stream()
-                .map(this::mapToDTO)
-                .collect(Collectors.toList());
-    }
+    // public List<IncomeCategoryDTO> getActiveCategories() {
+    //     return incomeCategoryRepository.findByIsActiveTrue().stream()
+    //             .map(this::mapToDTO)
+    //             .collect(Collectors.toList());
+    // }
     
     public IncomeCategoryDTO getCategoryById(Integer id) {
         return incomeCategoryRepository.findById(id)
@@ -98,7 +97,6 @@ public class IncomeCategoryService {
         dto.setName(category.getName());
         dto.setDescription(category.getDescription());
         dto.setIsActive(category.getIsActive());
-        dto.setCreatedAt(category.getCreatedAt());
         return dto;
     }
     
@@ -114,12 +112,11 @@ public class IncomeCategoryService {
      * 
      * @param name Filter by name containing this string (case-insensitive)
      * @param isActive Filter by active status
-     * @param createdAt Filter by creation date (date only, not time)
      * @return List of filtered income categories
      */
-    public List<IncomeCategoryDTO> filterCategories(String name, Boolean isActive, LocalDate createdAt) {
+    public List<IncomeCategoryDTO> filterCategories(String name, Boolean isActive) {
         // If all filter parameters are null, return all categories
-        if (name == null && isActive == null && createdAt == null) {
+        if (name == null && isActive == null) {
             return getAllCategories();
         }
 
@@ -142,13 +139,6 @@ public class IncomeCategoryService {
                     if (isActive != null && 
                         (category.getIsActive() == null || 
                         !category.getIsActive().equals(isActive))) {
-                        return false;
-                    }
-                    
-                    // Filter by createdAt date if provided
-                    if (createdAt != null && 
-                        (category.getCreatedAt() == null || 
-                        !LocalDate.from(category.getCreatedAt()).equals(createdAt))) {
                         return false;
                     }
                     

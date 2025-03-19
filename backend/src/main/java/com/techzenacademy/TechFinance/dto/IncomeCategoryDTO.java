@@ -1,7 +1,6 @@
 package com.techzenacademy.TechFinance.dto;
 
 import lombok.Data;
-import java.time.LocalDateTime;
 
 @Data
 public class IncomeCategoryDTO {
@@ -9,5 +8,4 @@ public class IncomeCategoryDTO {
     private String name;
     private String description;
     private Boolean isActive;
-    private LocalDateTime createdAt;
 }

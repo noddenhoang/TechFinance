@@ -4,39 +4,20 @@ const BASE_URL = '/api/income-categories'
 
 export const incomeCategories = {
   // Get all income categories with filters
-  getAll: async (filters = {}) => {
-    try {
-      const params = new URLSearchParams()
-      
-      // Only add parameters with values
-      if (filters.name) {
-        params.append('name', filters.name)
-      }
-      
-      // Special handling for isActive (only send when true or false, not null)
-      if (filters.isActive === true || filters.isActive === false) {
-        params.append('isActive', filters.isActive)
-      }
-      
-      // Format date according to ISO 8601
-      if (filters.createdAt) {
-        const date = new Date(filters.createdAt)
-        if (!isNaN(date.getTime())) {
-          params.append('createdAt', date.toISOString().split('T')[0])
-        }
-      }
-
-      const token = localStorage.getItem('token')
-      const response = await axios.get(`${BASE_URL}${params.toString() ? '?' + params.toString() : ''}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-      return response.data
-    } catch (error) {
-      console.error('Error fetching categories:', error)
-      throw error
+  async getAll(filters = {}) {
+    const params = new URLSearchParams();
+    
+    if (filters.name) {
+      params.append('name', filters.name);
     }
+    
+    if (filters.isActive !== null && filters.isActive !== undefined) {
+      params.append('isActive', filters.isActive);
+    }
+    
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+    const response = await axios.get(`${BASE_URL}${queryString}`);
+    return response.data;
   },
 
   // Get active income categories only

@@ -24,15 +24,14 @@ public class IncomeCategoryController {
     @GetMapping
     public ResponseEntity<List<IncomeCategoryDTO>> getCategories(
             @RequestParam(name = "name", required = false) String name,
-            @RequestParam(name = "isActive", required = false) Boolean isActive,
-            @RequestParam(name = "createdAt", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdAt) {
-        return ResponseEntity.ok(incomeCategoryService.filterCategories(name, isActive, createdAt));
+            @RequestParam(name = "isActive", required = false) Boolean isActive) {
+        return ResponseEntity.ok(incomeCategoryService.filterCategories(name, isActive));
     }
     
-    @GetMapping("/active")
-    public ResponseEntity<List<IncomeCategoryDTO>> getActiveCategories() {
-        return ResponseEntity.ok(incomeCategoryService.getActiveCategories());
-    }
+    // @GetMapping("/active")
+    // public ResponseEntity<List<IncomeCategoryDTO>> getActiveCategories() {
+    //     return ResponseEntity.ok(incomeCategoryService.getActiveCategories());
+    // }
     
     @GetMapping("/{id}")
     public ResponseEntity<IncomeCategoryDTO> getCategoryById(@PathVariable("id") Integer id) {
