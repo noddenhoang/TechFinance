@@ -197,11 +197,20 @@ function closeDetails() {
 }
 
 // Show notification
+const notification = reactive({
+  show: false,
+  message: '',
+  type: 'success'
+});
+
 function showNotification(message, type = 'success') {
-  // Implement based on your notification system
-  console.log(`${type}: ${message}`);
-  // Example if using a toast notification system:
-  // toast(message, { type });
+  notification.message = message;
+  notification.type = type;
+  notification.show = true;
+  
+  setTimeout(() => {
+    notification.show = false;
+  }, 3000); // Tự động ẩn sau 3 giây
 }
 
 // Open modal to add a new customer
@@ -738,29 +747,57 @@ async function deleteCustomer() {
     
     <!-- Delete Customer Modal -->
     <div v-if="showDeleteModal" class="modal-overlay">
-      <div class="modal-container">
+      <div class="modal-container modal-confirm">
         <div class="modal-header">
-          <h3 class="modal-title">Xác nhận xóa khách hàng</h3>
-          <button @click="closeDeleteModal" class="btn-close" title="Đóng">
+          <h3 class="modal-title">Xác nhận xóa</h3>
+          <button @click="closeDeleteModal" class="btn-close">
             <i class="bi bi-x-lg"></i>
           </button>
         </div>
         
-        <div class="modal-content">
-          <p>Bạn có chắc chắn muốn xóa khách hàng <strong>{{ customerToDelete.name }}</strong> không?</p>
-        </div>
-        
-        <div class="modal-actions">
-          <button @click="closeDeleteModal" class="btn-outline">
-            <i class="bi bi-x-lg"></i>
-            Hủy
-          </button>
-          <button @click="deleteCustomer" class="btn-primary" :disabled="deleting">
-            <i class="bi bi-trash"></i>
-            Xóa
-          </button>
+        <div class="modal-body text-center">
+          <div class="icon-warning">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+          </div>
+          <h4 class="confirm-title">Bạn có chắc chắn muốn xóa?</h4>
+          <p class="confirm-message">
+            Khách hàng "<strong>{{ customerToDelete?.name }}</strong>" sẽ bị xóa vĩnh viễn.
+            <br>Hành động này không thể hoàn tác.
+          </p>
+          
+          <div class="modal-actions">
+            <button
+              @click="closeDeleteModal"
+              class="btn-outline"
+              :disabled="deleting"
+            >
+              Hủy
+            </button>
+            <button
+              @click="deleteCustomer"
+              class="btn-danger"
+              :disabled="deleting"
+            >
+              <i v-if="deleting" class="bi bi-arrow-repeat spinner"></i>
+              {{ deleting ? 'Đang xóa...' : 'Xóa khách hàng' }}
+            </button>
+          </div>
         </div>
       </div>
+    </div>
+    
+    <!-- Toast Notification -->
+    <div 
+      v-if="notification.show"
+      :class="[
+        'toast-notification',
+        notification.type === 'success' ? 'success' : 'error'
+      ]"
+    >
+      <i :class="[
+        notification.type === 'success' ? 'bi bi-check-circle-fill' : 'bi bi-exclamation-circle-fill'
+      ]"></i>
+      <span>{{ notification.message }}</span>
     </div>
   </AppLayout>
 </template>
@@ -1415,5 +1452,119 @@ detail-row:last-child {
   padding: 0.5rem;
   min-width: 36px;
   height: 36px;
+}
+
+/* Toast Notification Styles */
+.toast-notification {
+  position: fixed;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: white;
+  border-radius: 0.375rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  z-index: 1000;
+  animation: fade-in 0.3s ease-out;
+}
+
+.toast-notification.success {
+  border-left: 4px solid #10b981;
+}
+
+.toast-notification.error {
+  border-left: 4px solid #ef4444;
+}
+
+.toast-notification i {
+  font-size: 1.25rem;
+}
+
+.toast-notification.success i {
+  color: #10b981;
+}
+
+.toast-notification.error i {
+  color: #ef4444;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 20px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* Cập nhật các style của modal delete để đồng bộ */
+.modal-confirm {
+  max-width: 26rem;
+}
+
+.modal-body.text-center {
+  text-align: center;
+}
+
+.icon-warning {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.icon-warning i {
+  font-size: 2rem;
+  color: #f59e0b;
+}
+
+.confirm-title {
+  font-weight: 600;
+  font-size: 1.125rem;
+  margin-bottom: 0.5rem;
+  color: #1e293b;
+  text-align: center;
+  width: 100%;
+}
+
+.confirm-message {
+  color: #4b5563;
+  text-align: center;
+  width: 100%;
+  margin-bottom: 1.5rem;
+}
+
+.modal-body.text-center .modal-actions {
+  display: flex;
+  justify-content: flex-end !important;
+  width: 100%;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+/* Cập nhật style cho nút Xóa khách hàng */
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background-color: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.btn-danger:hover {
+  background-color: #dc2626;
 }
 </style>
