@@ -229,14 +229,14 @@ function resetFilters() {
   closeDetails();
 }
 
-// View transaction details
+// Cập nhật function showTransactionDetails
 async function showTransactionDetails(transaction) {
   try {
     loading.value = true;
     // Fetch detailed info if needed
     const detailedTransaction = await incomeTransactions.getById(transaction.id);
     selectedTransaction.value = detailedTransaction;
-    showDetails.value = true;
+    showDetails.value = true; // Hiện modal thay vì thay đổi layout
   } catch (err) {
     console.error('Error fetching transaction details:', err);
     error.value = 'Không thể tải thông tin chi tiết giao dịch.';
@@ -245,7 +245,7 @@ async function showTransactionDetails(transaction) {
   }
 }
 
-// Close details view
+// Đơn giản hóa closeDetails
 function closeDetails() {
   showDetails.value = false;
   selectedTransaction.value = null;
@@ -428,17 +428,19 @@ function closeDeleteModal() {
 async function deleteTransaction() {
   if (!transactionToDelete.value) return;
   
+  const deletedTransactionId = transactionToDelete.value.id; // Lưu ID trước khi đóng modal
+  
   deleting.value = true;
   try {
-    await incomeTransactions.delete(transactionToDelete.value.id);
-
+    await incomeTransactions.delete(deletedTransactionId);
+    
     // Close delete modal
     closeDeleteModal();
     
     showNotification('Xóa giao dịch thành công');
     
     // If viewing details of this transaction, close details
-    if (selectedTransaction.value && selectedTransaction.value.id === transactionToDelete.value.id) {
+    if (selectedTransaction.value && selectedTransaction.value.id === deletedTransactionId) {
       closeDetails();
     }
     
@@ -498,36 +500,6 @@ function formatDateTime(dateTimeString) {
     hour: '2-digit',
     minute: '2-digit'
   });
-}
-
-// Export data to Excel
-async function exportData() {
-  try {
-    loading.value = true;
-    
-    // Convert string amounts to numbers for the API if they are not empty
-    const apiFilters = {...filters};
-    if (apiFilters.minAmount === '') apiFilters.minAmount = null;
-    if (apiFilters.maxAmount === '') apiFilters.maxAmount = null;
-    
-    const blob = await incomeTransactions.exportData(apiFilters);
-    
-    // Tạo URL cho blob và tải xuống
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `income-transactions-${new Date().toISOString().slice(0, 10)}.xlsx`);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    
-    showNotification('Xuất dữ liệu thành công');
-  } catch (err) {
-    console.error('Error exporting data:', err);
-    showNotification('Không thể xuất dữ liệu', 'error');
-  } finally {
-    loading.value = false;
-  }
 }
 
 // Calculate total amounts
@@ -744,7 +716,6 @@ function getSortIcon(field) {
                   </th>
                   <th>Khách hàng</th>
                   <th>Trạng thái</th>
-                  <th v-if="isAdmin" class="action-column text-center">Thao tác</th>
                 </tr>
               </thead>
               <tbody>
@@ -764,16 +735,6 @@ function getSortIcon(field) {
                       <i :class="[transaction.paymentStatus === 'RECEIVED' ? 'bi bi-check-circle' : 'bi bi-hourglass-split']"></i>
                       {{ formatPaymentStatus(transaction.paymentStatus) }}
                     </span>
-                  </td>
-                  <td v-if="isAdmin" class="action-column text-center">
-                    <div class="action-buttons">
-                      <button @click.stop="openEditModal(transaction)" class="btn-outline btn-icon">
-                        <i class="bi bi-pencil"></i>
-                      </button>
-                      <button @click.stop="openDeleteModal(transaction)" class="btn-outline btn-icon">
-                        <i class="bi bi-trash"></i>
-                      </button>
-                    </div>
                   </td>
                 </tr>
               </tbody>
@@ -846,117 +807,93 @@ function getSortIcon(field) {
           </div>
         </div>
         
-        <!-- Transaction Details -->
-        <div v-if="showDetails" class="card transaction-details">
-          <div class="card-header">
-            <h3 class="card-title">
-              <i class="bi bi-info-circle"></i>
-              Chi tiết giao dịch
-            </h3>
-            <button @click="closeDetails" class="btn-close" title="Đóng chi tiết">
-              <i class="bi bi-x-lg"></i>
-            </button>
-          </div>
-          
-          <div v-if="loading" class="card-empty-state">
-            <div class="loading-spinner"></div>
-            <p>Đang tải thông tin chi tiết...</p>
-          </div>
-          
-          <div v-else-if="selectedTransaction" class="transaction-details-content">
-            <div class="detail-header">
-              <div class="transaction-avatar">
-                <i class="bi bi-cash-coin"></i>
-              </div>
-              <h3 class="transaction-amount">{{ formatAmountDisplay(selectedTransaction.amount) }}</h3>
-              <p class="transaction-date">{{ formatDate(selectedTransaction.transactionDate) }}</p>
+        <!-- Transaction Details Modal -->
+        <div v-if="showDetails" class="modal-overlay details-modal-overlay">
+          <div class="modal-container details-modal-container">
+            <div class="modal-header">
+              <h3 class="modal-title">
+                <i class="bi bi-info-circle"></i>
+                Chi tiết giao dịch
+              </h3>
+              <button @click="closeDetails" class="btn-close" title="Đóng chi tiết">
+                <i class="bi bi-x-lg"></i>
+              </button>
             </div>
             
-            <div class="detail-section">
-              <h4 class="detail-section-title">Thông tin giao dịch</h4>
-              
-              <div class="detail-row">
-                <div class="detail-label">
-                  <i class="bi bi-tag"></i>
-                  Danh mục:
-                </div>
-                <div class="detail-value">{{ selectedTransaction.categoryName }}</div>
-              </div>
-              
-              <div class="detail-row">
-                <div class="detail-label">
-                  <i class="bi bi-person"></i>
-                  Khách hàng:
-                </div>
-                <div class="detail-value">{{ selectedTransaction.customerName || 'Không có' }}</div>
-              </div>
-              
-              <div class="detail-row">
-                <div class="detail-label">
-                  <i class="bi bi-calendar-check"></i>
-                  Trạng thái:
-                </div>
-                <div class="detail-value">
-                  <span :class="['status-badge', selectedTransaction.paymentStatus === 'RECEIVED' ? 'active' : 'pending']">
-                    <i :class="[selectedTransaction.paymentStatus === 'RECEIVED' ? 'bi bi-check-circle' : 'bi bi-hourglass-split']"></i>
-                    {{ formatPaymentStatus(selectedTransaction.paymentStatus) }}
-                  </span>
-                </div>
-              </div>
-              
-              <div class="detail-row">
-                <div class="detail-label">
-                  <i class="bi bi-hash"></i>
-                  Số tham chiếu:
-                </div>
-                <div class="detail-value">{{ selectedTransaction.referenceNo || 'Không có' }}</div>
-              </div>
-              
-              <div class="detail-row">
-                <div class="detail-label">
-                  <i class="bi bi-card-text"></i>
-                  Mô tả:
-                </div>
-                <div class="detail-value">{{ selectedTransaction.description || 'Không có mô tả' }}</div>
+            <div v-if="loading" class="modal-content">
+              <div class="card-empty-state">
+                <div class="loading-spinner"></div>
+                <p>Đang tải thông tin chi tiết...</p>
               </div>
             </div>
             
-            <div class="detail-section">
-              <h4 class="detail-section-title">Thông tin hệ thống</h4>
-              
-              <div class="detail-row">
-                <div class="detail-label">
-                  <i class="bi bi-person-badge"></i>
-                  Người tạo:
+            <div v-else-if="selectedTransaction" class="modal-content">
+              <div class="detail-header">
+                <div class="transaction-avatar">
+                  <i class="bi bi-cash-coin"></i>
                 </div>
-                <div class="detail-value">{{ selectedTransaction.createdBy || 'Không có' }}</div>
+                <h3 class="transaction-amount">{{ formatAmountDisplay(selectedTransaction.amount) }}</h3>
+                <p class="transaction-date">{{ formatDate(selectedTransaction.transactionDate) }}</p>
               </div>
               
-              <div class="detail-row">
-                <div class="detail-label">
-                  <i class="bi bi-clock"></i>
-                  Thời gian tạo:
+              <div class="detail-section">
+                <h4 class="detail-section-title">Thông tin giao dịch</h4>
+                
+                <div class="detail-row">
+                  <div class="detail-label">
+                    <i class="bi bi-tag"></i>
+                    Danh mục:
+                  </div>
+                  <div class="detail-value">{{ selectedTransaction.categoryName }}</div>
                 </div>
-                <div class="detail-value">{{ formatDateTime(selectedTransaction.createdAt) }}</div>
-              </div>
-              
-              <div class="detail-row">
-                <div class="detail-label">
-                  <i class="bi bi-clock-history"></i>
-                  Cập nhật lần cuối:
+                
+                <div class="detail-row">
+                  <div class="detail-label">
+                    <i class="bi bi-person"></i>
+                    Khách hàng:
+                  </div>
+                  <div class="detail-value">{{ selectedTransaction.customerName || 'Không có' }}</div>
                 </div>
-                <div class="detail-value">{{ formatDateTime(selectedTransaction.updatedAt) }}</div>
+                
+                <div class="detail-row">
+                  <div class="detail-label">
+                    <i class="bi bi-calendar-check"></i>
+                    Trạng thái:
+                  </div>
+                  <div class="detail-value">
+                    <span :class="['status-badge', selectedTransaction.paymentStatus === 'RECEIVED' ? 'active' : 'pending']">
+                      <i :class="[selectedTransaction.paymentStatus === 'RECEIVED' ? 'bi bi-check-circle' : 'bi bi-hourglass-split']"></i>
+                      {{ formatPaymentStatus(selectedTransaction.paymentStatus) }}
+                    </span>
+                  </div>
+                </div>
+                
+                <div class="detail-row">
+                  <div class="detail-label">
+                    <i class="bi bi-hash"></i>
+                    Số tham chiếu:
+                  </div>
+                  <div class="detail-value">{{ selectedTransaction.referenceNo || 'Không có' }}</div>
+                </div>
+                
+                <div class="detail-row">
+                  <div class="detail-label">
+                    <i class="bi bi-card-text"></i>
+                    Mô tả:
+                  </div>
+                  <div class="detail-value description-value">{{ selectedTransaction.description || 'Không có mô tả' }}</div>
+                </div>
               </div>
             </div>
             
-            <div v-if="isAdmin" class="detail-actions">
+            <div v-if="isAdmin && selectedTransaction" class="modal-actions">
               <button @click="openEditModal(selectedTransaction)" class="btn-primary">
                 <i class="bi bi-pencil"></i>
-                Chỉnh sửa
+                Sửa
               </button>
               <button @click="openDeleteModal(selectedTransaction)" class="btn-outline btn-danger-outline">
                 <i class="bi bi-trash"></i>
-                Xóa giao dịch
+                Xóa
               </button>
             </div>
           </div>
@@ -1167,83 +1104,77 @@ function getSortIcon(field) {
   box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
 }
 
+.form-input.error {
+  border-color: #ef4444;
+}
+
 /* Sửa lại thiết kế cho content-layout khi có details */
 .content-layout {
   display: flex;
   gap: 2rem;
-  flex-direction: column; /* Mặc định stack vertically trên mobile */
+  flex-direction: column;
+  width: 100%;
 }
 
+/* Chỉnh sửa transactions-list để đảm bảo nó chiếm đủ không gian */
+.transactions-list {
+  width: 100%; /* Chiếm toàn bộ không gian có sẵn */
+  flex: 1;
+  min-width: 0; /* Quan trọng để tránh flex child overflow */
+}
+
+/* Sửa thiết kế content-layout khi có details */
 @media (min-width: 992px) {
   .content-layout {
     flex-direction: row; /* Trên desktop hiển thị theo hàng ngang */
-  }
-  
-  .content-layout.with-details .transactions-list {
-    flex: 3; /* Phân bổ không gian, list chiếm 3/5 */
-  }
-  
-  .content-layout.with-details .transaction-details {
-    flex: 2; /* Details chiếm 2/5 */
-    position: sticky;
-    top: 1rem;
-    max-height: calc(100vh - 2rem);
-    overflow-y: auto;
+    align-items: flex-start; /* Đảm bảo các thành phần căn trên */
   }
 }
 
-/* Sửa table responsive */
+/* Sửa lại table-responsive để đảm bảo bảng không bị overflow */
 .table-responsive {
   width: 100%;
   overflow-x: auto;
+  min-width: 0; /* Quan trọng để tránh overflow */
 }
 
+/* Sửa lỗi width trong data-table */
 .data-table {
+  width: 100%;
   min-width: 100%;
+  table-layout: fixed; /* Giúp kiểm soát độ rộng các cột tốt hơn */
   border-collapse: separate;
   border-spacing: 0;
 }
 
-.data-table th,
-.data-table td {
-  padding: 0.75rem;
-  border-bottom: 1px solid #e5e7eb;
-  text-align: left;
+/* Thiết lập độ rộng của các cột trong bảng */
+.data-table th:nth-child(1), 
+.data-table td:nth-child(1) {
+  width: 12%; /* Ngày giao dịch */
 }
 
-.data-table th {
-  background-color: #f9fafb;
-  font-weight: 600;
-  color: #4b5563;
+.data-table th:nth-child(2), 
+.data-table td:nth-child(2) {
+  width: 15%; /* Số tiền */
 }
 
-/* Sửa cho sortable columns */
-.sortable-column {
-  cursor: pointer;
-  position: relative;
-  padding-right: 1.5rem; /* Tạo không gian cho icon sort */
+.data-table th:nth-child(3), 
+.data-table td:nth-child(3) {
+  width: 20%; /* Danh mục */
 }
 
-.sortable-column i {
-  position: absolute;
-  right: 0.5rem;
-  top: 50%;
-  transform: translateY(-50%);
+.data-table th:nth-child(4), 
+.data-table td:nth-child(4) {
+  width: 25%; /* Khách hàng */
 }
 
-/* Sửa lỗi transaction-row và hover effect */
-.transaction-row {
-  cursor: pointer;
-  transition: background-color 0.2s;
+.data-table th:nth-child(5), 
+.data-table td:nth-child(5) {
+  width: 18%; /* Trạng thái */
 }
 
-.transaction-row:hover {
-  background-color: #f9fafb;
-}
-
-.transaction-row.active {
-  background-color: #eff6ff; /* Xanh nhạt cho selected row */
-  border-left: 3px solid #3b82f6;
+.action-column {
+  width: 10%; /* Thao tác */
 }
 
 /* Sửa notification để tránh lỗi z-index và positioning */
@@ -1418,6 +1349,7 @@ function getSortIcon(field) {
   padding: 1.5rem;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  width: 100%; /* Đảm bảo card chiếm toàn bộ không gian có sẵn */
 }
 
 .card-header {
@@ -1625,25 +1557,33 @@ function getSortIcon(field) {
 
 .detail-header {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  margin-bottom: 1rem;
+  margin-bottom: 2rem;
+  text-align: center;
 }
 
 .transaction-avatar {
   background-color: #f3f4f6;
-  color: #6b7280;
+  color: #3b82f6;
   border-radius: 50%;
-  width: 3rem;
-  height: 3rem;
+  width: 4rem;
+  height: 4rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-right: 1rem;
+  margin-bottom: 1rem;
+}
+
+.transaction-avatar i {
+  font-size: 2rem;
 }
 
 .transaction-amount {
+  font-size: 1.75rem; /* Tăng kích thước chữ */
+  font-weight: 700; /* Đậm hơn */
   color: #111827;
-  margin: 0;
+  margin: 0 0 0.25rem 0;
 }
 
 .transaction-date {
@@ -1652,7 +1592,8 @@ function getSortIcon(field) {
 }
 
 .detail-section {
-  margin-bottom: 1rem;
+  margin-bottom: 0; /* Giảm khoảng cách dưới vì đã bỏ phần thông tin hệ thống */
+  padding-bottom: 0.5rem;
 }
 
 .detail-section-title {
@@ -1679,11 +1620,46 @@ function getSortIcon(field) {
 
 .detail-value {
   color: #111827;
+  font-weight: 500; /* Làm đậm giá trị */
 }
 
 .detail-actions {
   display: flex;
-  gap: 0.5rem;
+  flex-direction: row; /* Đảm bảo nằm ngang */
+  justify-content: flex-start; /* Căn trái */
+  gap: 0.75rem; /* Khoảng cách giữa các nút */
+  margin-top: 1.5rem; /* Thêm khoảng cách phía trên */
+  padding-top: 1rem; /* Thêm padding phía trên */
+  border-top: 1px solid #e5e7eb; /* Thêm đường ngăn cách */
+  width: 100%; /* Đảm bảo chiếm toàn bộ chiều rộng */
+}
+
+/* Điều chỉnh kích thước nút trong detail-actions */
+.detail-actions button {
+  min-width: 80px; /* Giảm kích thước nút */
+  padding: 0.3rem 0.5rem; /* Giảm padding */
+  font-size: 0.75rem; /* Giảm kích thước chữ */
+  justify-content: center; /* Căn giữa nội dung button */
+  height: 30px; /* Đặt chiều cao cố định */
+  flex: 0 0 auto; /* Ngăn không cho nút co giãn */
+}
+
+.detail-actions button i {
+  font-size: 0.75rem; /* Giảm kích thước icon */
+  margin-right: 0.25rem; /* Giảm khoảng cách giữa icon và text */
+}
+
+/* Chỉ sử dụng flex-direction: column trên màn hình rất nhỏ */
+@media (max-width: 359px) {
+  .detail-actions {
+    flex-direction: column; /* Stack buttons on very small screens */
+    width: 100%;
+  }
+  
+  .detail-actions button {
+    width: 100%; /* Full width buttons on very small screens */
+    margin-bottom: 0.5rem;
+  }
 }
 
 .modal-overlay {
@@ -1707,7 +1683,6 @@ function getSortIcon(field) {
   max-width: 650px;
   max-height: 90vh;
   overflow-y: auto;
-  margin: 2rem;
   display: flex;
   flex-direction: column;
 }
@@ -1776,6 +1751,12 @@ function getSortIcon(field) {
   margin-top: 0.25rem;
 }
 
+.modal-warning {
+  color: #ef4444;
+  font-size: 0.875rem;
+  font-style: italic;
+}
+
 .loading-icon {
   animation: spin 1s linear infinite;
 }
@@ -1794,5 +1775,108 @@ function getSortIcon(field) {
 
 .notification span {
   color: #111827;
+}
+
+@media (max-width: 767px) {
+  .content-layout {
+    flex-direction: column;
+  }
+  
+  .transactions-list.minimized {
+    display: none;
+  }
+  
+  .transaction-details {
+    width: 100%;
+  }
+  
+  .transaction-summary {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .summary-item {
+    justify-content: space-between;
+  }
+  
+  .pagination-container {
+    flex-direction: column;
+    gap: 1rem;
+  }
+}
+
+/* Thêm style cho modal chi tiết */
+.details-modal-container {
+  max-width: 550px; /* Giảm độ rộng vì ít thông tin hơn */
+}
+
+.details-modal-overlay {
+  z-index: 999; /* Đảm bảo hiển thị dưới modal thêm/sửa */
+}
+
+.detail-header {
+  padding: 1rem 0;
+  margin-bottom: 1.5rem;
+  align-items: center;
+  text-align: center;
+}
+
+/* Đảm bảo mô tả dài không bị cắt */
+.description-value {
+  white-space: pre-wrap; 
+  word-break: break-word;
+}
+
+/* Sửa hiển thị của các dòng thông tin */
+.detail-row {
+  display: flex;
+  flex-direction: column; /* Hiển thị label trên, value dưới trên mobile */
+  margin-bottom: 1rem;
+}
+
+.detail-label {
+  color: #6b7280;
+  margin-bottom: 0.25rem;
+  font-weight: 500;
+}
+
+.detail-value {
+  color: #111827;
+}
+
+/* Responsive cho desktop */
+@media (min-width: 768px) {
+  .detail-row {
+    flex-direction: row; /* Hiển thị label và value trên cùng một dòng */
+    align-items: flex-start;
+  }
+  
+  .detail-label {
+    width: 150px; /* Chiều rộng cố định cho phần label */
+    padding-right: 1rem;
+  }
+  
+  .detail-value {
+    flex: 1; /* Chiếm hết phần còn lại */
+  }
+}
+
+/* Sửa nút trong modal-actions */
+.modal-actions button {
+  min-width: 100px;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+}
+
+.action-buttons .btn-outline.btn-icon {
+  width: 28px; /* Giảm kích thước */
+  height: 28px; /* Giảm kích thước */
+  padding: 0;
+  margin: 0 2px;
+}
+
+.action-buttons .btn-icon i {
+  font-size: 0.75rem; /* Icon nhỏ hơn */
+  margin: 0;
 }
 </style>
