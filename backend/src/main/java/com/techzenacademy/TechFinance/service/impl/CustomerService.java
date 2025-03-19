@@ -129,4 +129,21 @@ public class CustomerService {
         return userRepository.findByUsername(username)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
     }
+    
+    /**
+     * Filter customers based on optional criteria
+     * 
+     * @param name Filter by name containing this string (case-insensitive)
+     * @param email Filter by email containing this string (case-insensitive)
+     * @param phone Filter by phone containing this string (case-insensitive)
+     * @param address Filter by address containing this string (case-insensitive)
+     * @param isActive Filter by active status
+     * @return List of filtered customers
+     */
+    public List<CustomerDTO> filterCustomers(String name, String email, String phone, String address, Boolean isActive) {
+        return customerRepository.findWithFilters(name, email, phone, address, isActive)
+                .stream()
+                .map(this::mapToDTO)
+                .collect(Collectors.toList());
+    }
 }
