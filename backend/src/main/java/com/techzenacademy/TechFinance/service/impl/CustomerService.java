@@ -10,6 +10,9 @@ import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import com.techzenacademy.TechFinance.dto.page.PageResponse;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -145,5 +148,29 @@ public class CustomerService {
                 .stream()
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());
+    }
+    
+    /**
+     * Filter customers with pagination
+     * 
+     * @param name Filter by name containing this string (case-insensitive)
+     * @param email Filter by email containing this string (case-insensitive)
+     * @param phone Filter by phone containing this string (case-insensitive)
+     * @param address Filter by address containing this string (case-insensitive)
+     * @param isActive Filter by active status
+     * @param pageable Pagination information
+     * @return PageResponse of filtered customers
+     */
+    public PageResponse<CustomerDTO> getPagedCustomers(
+            String name, String email, String phone, String address, Boolean isActive, Pageable pageable) {
+        
+        Page<Customer> customerPage = customerRepository.findWithFiltersPageable(
+                name, email, phone, address, isActive, pageable);
+        
+        // Map the contents using the existing mapToDTO method
+        Page<CustomerDTO> dtoPage = customerPage.map(this::mapToDTO);
+        
+        // Return the custom page response
+        return new PageResponse<>(dtoPage);
     }
 }

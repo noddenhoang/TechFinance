@@ -25,20 +25,14 @@ public class ExpenseCategoryController {
     private ExpenseCategoryService expenseCategoryService;
     
     @GetMapping
-    public ResponseEntity<List<ExpenseCategoryDTO>> getCategories(
-            @RequestParam(name = "name", required = false) String name,
-            @RequestParam(name = "isActive", required = false) Boolean isActive) {
-        return ResponseEntity.ok(expenseCategoryService.filterCategories(name, isActive));
-    }
-    
-    @GetMapping("/paged")
-    public ResponseEntity<PageResponse<ExpenseCategoryDTO>> getCategoriesPaginated(
+    public ResponseEntity<PageResponse<ExpenseCategoryDTO>> getCategories(
             @RequestParam(name = "name", required = false) String name,
             @RequestParam(name = "isActive", required = false) Boolean isActive,
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "8") int size,
             @RequestParam(name = "sort", defaultValue = "id,asc") String[] sort) {
         
+        // Tạo đối tượng Sort
         String sortField = sort[0];
         String sortDirection = sort.length > 1 ? sort[1] : "asc";
         
@@ -46,8 +40,10 @@ public class ExpenseCategoryController {
                 Sort.Direction.ASC : Sort.Direction.DESC;
         Sort sortObj = Sort.by(direction, sortField);
         
+        // Tạo đối tượng Pageable với kích thước mặc định là 8
         Pageable pageable = PageRequest.of(page, size, sortObj);
         
+        // Lấy dữ liệu đã phân trang
         PageResponse<ExpenseCategoryDTO> pagedResponse = 
                 expenseCategoryService.getPagedCategories(name, isActive, pageable);
                 

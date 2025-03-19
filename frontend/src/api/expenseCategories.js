@@ -3,7 +3,6 @@ import axios from 'axios'
 const BASE_URL = '/api/expense-categories'
 
 export const expenseCategories = {
-  // Cập nhật phương thức getAll để hỗ trợ phân trang
   async getAll(filters = {}, page = 0, size = 8, sortField = 'id', sortDirection = 'asc') {
     try {
       const params = new URLSearchParams();
@@ -20,12 +19,13 @@ export const expenseCategories = {
       // Thêm tham số phân trang
       params.append('page', page.toString());
       params.append('size', size.toString());
-      params.append('sort', `${sortField},${sortDirection}`);
+      params.append('sort', sortField + ',' + sortDirection);
       
       const queryString = params.toString() ? `?${params.toString()}` : '';
       const token = localStorage.getItem('token');
       
-      const response = await axios.get(`${BASE_URL}/paged${queryString}`, {
+      // Sửa trực tiếp endpoint ở đây, xóa '/paged'
+      const response = await axios.get(`${BASE_URL}${queryString}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

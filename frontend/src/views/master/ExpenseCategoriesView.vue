@@ -222,7 +222,7 @@ async function saveCategory() {
       showNotification('Tạo danh mục mới thành công')
     }
     closeModal()
-    await loadCategories()
+    await loadCategories(pagination.currentPage)
   } catch (err) {
     if (err.response?.data?.message?.includes('already exists')) {
       modalErrors.name = 'Danh mục với tên này đã tồn tại'

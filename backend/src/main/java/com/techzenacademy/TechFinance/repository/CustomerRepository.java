@@ -1,6 +1,8 @@
 package com.techzenacademy.TechFinance.repository;
 
 import com.techzenacademy.TechFinance.entity.Customer;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -25,4 +27,19 @@ public interface CustomerRepository extends JpaRepository<Customer, Integer> {
             @Param("phone") String phone,
             @Param("address") String address,
             @Param("isActive") Boolean isActive);
+            
+    // Thêm phương thức phân trang
+    @Query("SELECT c FROM Customer c WHERE " +
+           "(:name IS NULL OR LOWER(c.name) LIKE LOWER(CONCAT('%', :name, '%'))) AND " +
+           "(:email IS NULL OR LOWER(c.email) LIKE LOWER(CONCAT('%', :email, '%'))) AND " +
+           "(:phone IS NULL OR LOWER(c.phone) LIKE LOWER(CONCAT('%', :phone, '%'))) AND " +
+           "(:address IS NULL OR LOWER(c.address) LIKE LOWER(CONCAT('%', :address, '%'))) AND " +
+           "(:isActive IS NULL OR c.isActive = :isActive)")
+    Page<Customer> findWithFiltersPageable(
+            @Param("name") String name,
+            @Param("email") String email,
+            @Param("phone") String phone,
+            @Param("address") String address,
+            @Param("isActive") Boolean isActive,
+            Pageable pageable);
 }
