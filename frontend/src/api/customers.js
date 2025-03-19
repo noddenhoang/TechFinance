@@ -47,5 +47,52 @@ export const customers = {
       console.error(`Error fetching customer ${id}:`, error);
       throw error;
     }
+  },
+  
+  // Create new customer
+  async create(data) {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(BASE_URL, data, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error creating customer:', error);
+      throw error;
+    }
+  },
+  
+  // Update existing customer
+  async update(id, data) {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.put(`${BASE_URL}/${id}`, data, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Error updating customer ${id}:`, error);
+      throw error;
+    }
+  },
+  
+  // Delete customer
+  async delete(id) {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${BASE_URL}/${id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+    } catch (error) {
+      console.error(`Error deleting customer ${id}:`, error);
+      throw error;
+    }
   }
 }

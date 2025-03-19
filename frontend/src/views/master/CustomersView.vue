@@ -1,7 +1,8 @@
 <script setup>
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, onMounted, computed, nextTick } from 'vue';
 import AppLayout from '../../components/layouts/AppLayout.vue';
 import { customers } from '../../api/customers';
+import { useAuthStore } from '../../stores/auth'; // Thêm store auth để kiểm tra quyền
 
 // Data state
 const customersList = ref([]);
@@ -9,6 +10,62 @@ const selectedCustomer = ref(null);
 const loading = ref(true);
 const error = ref(null);
 const showDetails = ref(false);
+
+// Auth store để kiểm tra quyền admin
+const auth = useAuthStore();
+
+// Kiểm tra quyền admin - Sửa để giống với ExpenseCategoriesView và IncomeCategoriesView
+const isAdmin = computed(() => {
+  // Debug dữ liệu auth nếu cần
+  console.log('Auth user data:', auth.user);
+  console.log('Auth authorities:', auth.user?.authorities);
+  
+  // Kiểm tra theo nhiều cấu trúc có thể có
+  if (auth.user?.authorities && Array.isArray(auth.user.authorities)) {
+    // Trường hợp 1: authorities là mảng string
+    if (typeof auth.user.authorities[0] === 'string') {
+      return auth.user.authorities.includes('ROLE_ADMIN');
+    }
+    
+    // Trường hợp 2: authorities là mảng object có thuộc tính authority
+    if (typeof auth.user.authorities[0] === 'object') {
+      return auth.user.authorities.some(auth => 
+        auth.authority === 'ROLE_ADMIN' || auth === 'ROLE_ADMIN'
+      );
+    }
+  }
+  
+  // Trường hợp 3: role trực tiếp trên user
+  if (auth.user?.role === 'ROLE_ADMIN' || auth.user?.role === 'admin') {
+    return true;
+  }
+  
+  // Không tìm thấy quyền admin
+  return false;
+});
+
+// States for Add/Edit modal
+const showModal = ref(false);
+const editMode = ref(false);
+const saving = ref(false);
+const modalCustomer = reactive({
+  id: null,
+  name: '',
+  email: '',
+  phone: '',
+  address: '',
+  notes: '',
+  isActive: true
+});
+const modalErrors = reactive({
+  name: '',
+  email: ''
+});
+
+// States for Delete modal
+const showDeleteModal = ref(false);
+const customerToDelete = ref(null);
+const deleting = ref(false);
 
 // Filter state
 const filters = reactive({
@@ -119,6 +176,182 @@ function closeDetails() {
   showDetails.value = false;
   selectedCustomer.value = null;
 }
+
+// Show notification
+function showNotification(message, type = 'success') {
+  // Implement based on your notification system
+  console.log(`${type}: ${message}`);
+  // Example if using a toast notification system:
+  // toast(message, { type });
+}
+
+// Open modal to add a new customer
+function openAddModal() {
+  editMode.value = false;
+  modalCustomer.id = null;
+  modalCustomer.name = '';
+  modalCustomer.email = '';
+  modalCustomer.phone = '';
+  modalCustomer.address = '';
+  modalCustomer.notes = '';
+  modalCustomer.isActive = true;
+  modalErrors.name = '';
+  modalErrors.email = '';
+  showModal.value = true;
+  
+  // Focus vào input sau khi modal hiển thị
+  nextTick(() => {
+    document.querySelector('input[name="customerName"]')?.focus();
+  });
+}
+
+// Open modal to edit an existing customer
+function openEditModal(customer) {
+  editMode.value = true;
+  modalCustomer.id = customer.id;
+  modalCustomer.name = customer.name;
+  modalCustomer.email = customer.email;
+  modalCustomer.phone = customer.phone || '';
+  modalCustomer.address = customer.address || '';
+  modalCustomer.notes = customer.notes || '';
+  modalCustomer.isActive = customer.isActive;
+  modalErrors.name = '';
+  modalErrors.email = '';
+  showModal.value = true;
+  
+  // Focus vào input sau khi modal hiển thị
+  nextTick(() => {
+    document.querySelector('input[name="customerName"]')?.focus();
+  });
+}
+
+// Close add/edit modal
+function closeModal() {
+  showModal.value = false;
+}
+
+// Save customer (create or update)
+async function saveCustomer() {
+  // Reset errors
+  modalErrors.name = '';
+  modalErrors.email = '';
+  
+  // Validate
+  let isValid = true;
+  
+  if (!modalCustomer.name.trim()) {
+    modalErrors.name = 'Tên khách hàng không được để trống';
+    isValid = false;
+  }
+  
+  if (modalCustomer.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(modalCustomer.email)) {
+    modalErrors.email = 'Email không hợp lệ';
+    isValid = false;
+  }
+  
+  if (!isValid) return;
+  
+  saving.value = true;
+  try {
+    if (editMode.value) {
+      await customers.update(modalCustomer.id, {
+        name: modalCustomer.name,
+        email: modalCustomer.email,
+        phone: modalCustomer.phone,
+        address: modalCustomer.address,
+        notes: modalCustomer.notes,
+        isActive: modalCustomer.isActive
+      });
+      showNotification('Cập nhật khách hàng thành công');
+      
+      // Nếu đang xem chi tiết khách hàng này thì cập nhật lại thông tin chi tiết
+      if (selectedCustomer.value && selectedCustomer.value.id === modalCustomer.id) {
+        selectedCustomer.value = await customers.getById(modalCustomer.id);
+      }
+      
+      // Tải lại trang hiện tại
+      await loadCustomers(pagination.currentPage);
+    } else {
+      const newCustomer = await customers.create({
+        name: modalCustomer.name,
+        email: modalCustomer.email,
+        phone: modalCustomer.phone,
+        address: modalCustomer.address,
+        notes: modalCustomer.notes,
+        isActive: modalCustomer.isActive
+      });
+      showNotification('Tạo khách hàng mới thành công');
+      
+      // Tải lại từ trang đầu tiên
+      await loadCustomers(0);
+    }
+    
+    closeModal();
+  } catch (error) {
+    console.error('Lỗi khi lưu khách hàng:', error);
+    
+    if (error.response?.status === 400) {
+      if (error.response.data.message?.includes('email already exists')) {
+        modalErrors.email = 'Email đã tồn tại';
+      } else {
+        showNotification(
+          error.response.data.message || 'Dữ liệu không hợp lệ',
+          'error'
+        );
+      }
+    } else {
+      showNotification(
+        'Có lỗi xảy ra, vui lòng thử lại sau',
+        'error'
+      );
+    }
+  } finally {
+    saving.value = false;
+  }
+}
+
+// Open delete confirmation modal
+function openDeleteModal(customer) {
+  customerToDelete.value = customer;
+  showDeleteModal.value = true;
+}
+
+// Close delete confirmation modal
+function closeDeleteModal() {
+  showDeleteModal.value = false;
+  customerToDelete.value = null;
+}
+
+// Delete customer
+async function deleteCustomer() {
+  if (!customerToDelete.value) return;
+  
+  deleting.value = true;
+  try {
+    await customers.delete(customerToDelete.value.id);
+    showNotification('Xóa khách hàng thành công');
+    closeDeleteModal();
+    
+    // Nếu đang xem chi tiết khách hàng này thì đóng chi tiết
+    if (selectedCustomer.value && selectedCustomer.value.id === customerToDelete.value.id) {
+      closeDetails();
+    }
+    
+    // Kiểm tra nếu đây là item cuối cùng trên trang hiện tại
+    if (customersList.value.length === 1 && pagination.currentPage > 0) {
+      // Nếu đây là item cuối cùng và không phải trang đầu tiên
+      // thì chuyển đến trang trước đó
+      await loadCustomers(pagination.currentPage - 1);
+    } else {
+      // Ngược lại, tải lại trang hiện tại
+      await loadCustomers(pagination.currentPage);
+    }
+  } catch (err) {
+    showNotification('Không thể xóa khách hàng', 'error');
+  } finally {
+    deleting.value = false;
+  }
+}
 </script>
 
 <template>
@@ -130,6 +363,12 @@ function closeDetails() {
         <div>
           <h2 class="page-title">Quản lý khách hàng</h2>
           <p class="page-description">Xem và tìm kiếm thông tin khách hàng</p>
+        </div>
+        <div v-if="isAdmin">
+          <button @click="openAddModal" class="btn-primary">
+            <i class="bi bi-plus-lg"></i>
+            Thêm khách hàng
+          </button>
         </div>
       </div>
       
@@ -208,6 +447,7 @@ function closeDetails() {
               <thead>
                 <tr>
                   <th>Tên khách hàng</th>
+                  <th v-if="isAdmin">Hành động</th>
                 </tr>
               </thead>
               <tbody>
@@ -221,6 +461,14 @@ function closeDetails() {
                   <td class="customer-name">
                     <i class="bi bi-person customer-icon"></i>
                     {{ customer.name }}
+                  </td>
+                  <td v-if="isAdmin" class="customer-actions">
+                    <button @click.stop="openEditModal(customer)" class="btn-outline">
+                      <i class="bi bi-pencil"></i>
+                    </button>
+                    <button @click.stop="openDeleteModal(customer)" class="btn-outline">
+                      <i class="bi bi-trash"></i>
+                    </button>
                   </td>
                 </tr>
               </tbody>
@@ -355,6 +603,120 @@ function closeDetails() {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Add/Edit Customer Modal -->
+    <div v-if="showModal" class="modal-overlay">
+      <div class="modal-container">
+        <div class="modal-header">
+          <h3 class="modal-title">{{ editMode ? 'Chỉnh sửa khách hàng' : 'Thêm khách hàng mới' }}</h3>
+          <button @click="closeModal" class="btn-close" title="Đóng">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+        
+        <div class="modal-content">
+          <div class="form-group">
+            <label class="form-label">Tên khách hàng</label>
+            <input
+              v-model="modalCustomer.name"
+              type="text"
+              class="form-input"
+              name="customerName"
+              :class="{ 'is-invalid': modalErrors.name }"
+              placeholder="Nhập tên khách hàng"
+            />
+            <div v-if="modalErrors.name" class="invalid-feedback">{{ modalErrors.name }}</div>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Email</label>
+            <input
+              v-model="modalCustomer.email"
+              type="email"
+              class="form-input"
+              :class="{ 'is-invalid': modalErrors.email }"
+              placeholder="Nhập email khách hàng"
+            />
+            <div v-if="modalErrors.email" class="invalid-feedback">{{ modalErrors.email }}</div>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Số điện thoại</label>
+            <input
+              v-model="modalCustomer.phone"
+              type="text"
+              class="form-input"
+              placeholder="Nhập số điện thoại khách hàng"
+            />
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Địa chỉ</label>
+            <input
+              v-model="modalCustomer.address"
+              type="text"
+              class="form-input"
+              placeholder="Nhập địa chỉ khách hàng"
+            />
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Ghi chú</label>
+            <textarea
+              v-model="modalCustomer.notes"
+              class="form-input"
+              placeholder="Nhập ghi chú"
+            ></textarea>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Trạng thái</label>
+            <select v-model="modalCustomer.isActive" class="form-input">
+              <option :value="true">Hoạt động</option>
+              <option :value="false">Không hoạt động</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="modal-actions">
+          <button @click="closeModal" class="btn-outline">
+            <i class="bi bi-x-lg"></i>
+            Hủy
+          </button>
+          <button @click="saveCustomer" class="btn-primary" :disabled="saving">
+            <i class="bi bi-save"></i>
+            Lưu
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Delete Customer Modal -->
+    <div v-if="showDeleteModal" class="modal-overlay">
+      <div class="modal-container">
+        <div class="modal-header">
+          <h3 class="modal-title">Xác nhận xóa khách hàng</h3>
+          <button @click="closeDeleteModal" class="btn-close" title="Đóng">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+        
+        <div class="modal-content">
+          <p>Bạn có chắc chắn muốn xóa khách hàng <strong>{{ customerToDelete.name }}</strong> không?</p>
+        </div>
+        
+        <div class="modal-actions">
+          <button @click="closeDeleteModal" class="btn-outline">
+            <i class="bi bi-x-lg"></i>
+            Hủy
+          </button>
+          <button @click="deleteCustomer" class="btn-primary" :disabled="deleting">
+            <i class="bi bi-trash"></i>
+            Xóa
+          </button>
         </div>
       </div>
     </div>
@@ -572,6 +934,11 @@ function closeDetails() {
 .customer-icon {
   color: #4f46e5;
   font-size: 1rem;
+}
+
+.customer-actions {
+  display: flex;
+  gap: 0.5rem;
 }
 
 /* CARD EMPTY STATE */
@@ -860,6 +1227,72 @@ function closeDetails() {
 .detail-value {
   flex: 1;
   color: #1e293b;
+}
+
+/* MODAL STYLES */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-container {
+  background-color: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  width: 100%;
+  max-width: 30rem;
+  overflow: hidden;
+}
+
+.modal-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #f8fafc;
+}
+
+.modal-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.modal-content {
+  padding: 1.25rem;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  border-top: 1px solid #e2e8f0;
+  background-color: #f8fafc;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.invalid-feedback {
+  color: #b91c1c;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+.is-invalid {
+  border-color: #b91c1c;
+  box-shadow: 0 0 0 3px rgba(185, 28, 28, 0.2);
 }
 
 /* Responsive styles */
