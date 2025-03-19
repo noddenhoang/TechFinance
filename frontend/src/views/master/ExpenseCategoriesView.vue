@@ -76,28 +76,93 @@ const notification = reactive({
   type: 'success'
 })
 
+// Thêm state cho phân trang
+const pagination = reactive({
+  currentPage: 0,
+  totalPages: 0,
+  totalItems: 0,
+  pageSize: 8
+})
+
+// Thêm state cho sắp xếp
+const sorting = reactive({
+  field: 'id',
+  direction: 'asc'
+})
+
 // Load categories on component mount
 onMounted(async () => {
   await loadCategories()
 })
 
-async function loadCategories() {
-  loading.value = true
-  error.value = null
+// Sửa hàm loadCategories để hỗ trợ phân trang
+async function loadCategories(newPage = 0) {
+  loading.value = true;
+  error.value = null;
   try {
-    categories.value = await expenseCategories.getAll(filters)
+    // Đảm bảo newPage là số hợp lệ
+    const targetPage = parseInt(newPage);
+    const page = !isNaN(targetPage) ? targetPage : 0;
+    
+    const result = await expenseCategories.getAll(
+      filters, 
+      page, 
+      pagination.pageSize,
+      sorting.field,
+      sorting.direction
+    );
+    
+    console.log('API pagination response:', result);
+    
+    // Cập nhật dữ liệu và thông tin phân trang
+    categories.value = result.content || [];
+    
+    // Cập nhật thông tin phân trang từ API response
+    if (result.page) {
+      pagination.currentPage = result.page.page;
+      pagination.totalPages = result.page.totalPages;
+      pagination.totalItems = result.page.totalElement;
+    } else {
+      pagination.currentPage = page;
+      pagination.totalPages = Math.ceil((result.totalElement || 0) / pagination.pageSize);
+      pagination.totalItems = result.totalElement || 0;
+    }
+    
   } catch (err) {
-    error.value = 'Không thể tải danh mục. Vui lòng thử lại sau.'
-    console.error('Error loading categories:', err)
+    error.value = 'Không thể tải danh mục. Vui lòng thử lại sau.';
+    console.error('Error loading categories:', err);
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
+// Thêm hàm chuyển trang
+function goToPage(page) {
+  // Đảm bảo page là số
+  const targetPage = parseInt(page);
+  
+  // Kiểm tra nếu là số hợp lệ và trong khoảng cho phép
+  if (!isNaN(targetPage) && targetPage >= 0 && targetPage < pagination.totalPages) {
+    loadCategories(targetPage);
+  }
+}
+
+// Thêm hàm này sau hàm goToPage
+function sortBy(field) {
+  if (sorting.field === field) {
+    sorting.direction = sorting.direction === 'asc' ? 'desc' : 'asc';
+  } else {
+    sorting.field = field;
+    sorting.direction = 'asc';
+  }
+  loadCategories(0); // Reset về trang đầu tiên khi thay đổi sắp xếp
+}
+
 function resetFilters() {
-  filters.name = ''
-  filters.isActive = null
-  loadCategories()
+  filters.name = '';
+  filters.isActive = null;
+  pagination.currentPage = 0; // Reset về trang đầu tiên
+  loadCategories(0);
 }
 
 function openAddModal() {
@@ -275,7 +340,7 @@ const statusOptions = [
               <i class="bi bi-arrow-repeat"></i>
               Đặt lại
             </button>
-            <button @click="loadCategories" class="btn-primary">
+            <button @click.prevent="loadCategories(0)" class="btn-primary">
               <i class="bi bi-search"></i>
               Tìm kiếm
             </button>
@@ -317,9 +382,21 @@ const statusOptions = [
           <table class="data-table">
             <thead>
               <tr>
-                <th>Tên danh mục</th>
-                <th>Mô tả</th>
-                <th>Trạng thái</th>
+                <th class="sortable" @click="sortBy('name')">
+                  Tên danh mục
+                  <i v-if="sorting.field === 'name'" 
+                     :class="['sort-icon', 'bi', sorting.direction === 'asc' ? 'bi-arrow-up' : 'bi-arrow-down']"></i>
+                </th>
+                <th class="sortable" @click="sortBy('description')">
+                  Mô tả
+                  <i v-if="sorting.field === 'description'" 
+                     :class="['sort-icon', 'bi', sorting.direction === 'asc' ? 'bi-arrow-up' : 'bi-arrow-down']"></i>
+                </th>
+                <th class="sortable" @click="sortBy('isActive')">
+                  Trạng thái
+                  <i v-if="sorting.field === 'isActive'" 
+                     :class="['sort-icon', 'bi', sorting.direction === 'asc' ? 'bi-arrow-up' : 'bi-arrow-down']"></i>
+                </th>
                 <th v-if="isAdmin" class="text-right">Thao tác</th>
               </tr>
             </thead>
@@ -359,6 +436,55 @@ const statusOptions = [
               </tr>
             </tbody>
           </table>
+        </div>
+      </div>
+      
+      <!-- Thêm điều khiển phân trang -->
+      <div v-if="categories.length > 0" class="pagination-container">
+        <div class="pagination-info">
+          Hiển thị {{ categories.length }} trên tổng số {{ pagination.totalItems }} danh mục
+        </div>
+        
+        <div class="pagination-controls">
+          <button 
+            @click.prevent="goToPage(0)" 
+            :disabled="pagination.currentPage === 0"
+            class="pagination-btn"
+            title="Trang đầu"
+          >
+            <i class="bi bi-chevron-double-left"></i>
+          </button>
+          
+          <button 
+            @click.prevent="goToPage(pagination.currentPage - 1)" 
+            :disabled="pagination.currentPage === 0"
+            class="pagination-btn"
+            title="Trang trước"
+          >
+            <i class="bi bi-chevron-left"></i>
+          </button>
+          
+          <span class="pagination-text">
+            Trang {{ pagination.currentPage + 1 }} / {{ pagination.totalPages }}
+          </span>
+          
+          <button 
+            @click.prevent="goToPage(pagination.currentPage + 1)" 
+            :disabled="pagination.currentPage === pagination.totalPages - 1"
+            class="pagination-btn"
+            title="Trang sau"
+          >
+            <i class="bi bi-chevron-right"></i>
+          </button>
+          
+          <button 
+            @click.prevent="goToPage(pagination.totalPages - 1)" 
+            :disabled="pagination.currentPage === pagination.totalPages - 1"
+            class="pagination-btn"
+            title="Trang cuối"
+          >
+            <i class="bi bi-chevron-double-right"></i>
+          </button>
         </div>
       </div>
     </div>
@@ -931,7 +1057,7 @@ const statusOptions = [
 }
 
 .modal-confirm {
-  max-width: 28rem;
+  max-width: 26rem;
 }
 
 .modal-header {
@@ -950,35 +1076,60 @@ const statusOptions = [
 }
 
 .modal-body {
-  padding: 1.25rem;
+  padding: 1.5rem;
 }
 
 .modal-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-end; /* Căn phải */
+  width: 100%;
   gap: 0.75rem;
-  margin-top: 1.25rem;
-  padding-top: 1.25rem;
-  border-top: 1px solid #f1f5f9;
+  margin-top: 1.5rem;
+  border-top: none;
+  padding-top: 0;
+}
+
+.modal-body.text-center .modal-actions {
+  display: flex;
+  justify-content: flex-end !important;
+  width: 100%;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
 }
 
 .icon-warning {
-  font-size: 3rem;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.icon-warning i {
+  font-size: 2rem;
   color: #f59e0b;
-  margin-bottom: 1rem;
 }
 
 .confirm-title {
-  font-size: 1.25rem;
   font-weight: 600;
-  color: #1e293b;
+  font-size: 1.125rem;
   margin-bottom: 0.5rem;
+  color: #1e293b;
+  text-align: center;
+  width: 100%;
 }
 
 .confirm-message {
-  font-size: 0.875rem;
-  color: #374151;
+  color: #4b5563;
+  text-align: center;
+  width: 100%;
   margin-bottom: 1.5rem;
+}
+
+.modal-body.text-center .modal-actions {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
 }
 
 /* TOAST NOTIFICATION */
@@ -1009,5 +1160,62 @@ const statusOptions = [
 
 .toast-notification i {
   font-size: 1.25rem;
+}
+
+/* Thêm CSS cho phân trang */
+.pagination-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  border-top: 1px solid #e5e7eb;
+  background-color: #f9fafb;
+}
+
+.pagination-info {
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pagination-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  background-color: white;
+  color: #4b5563;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background-color: #f3f4f6;
+  color: #4f46e5;
+  border-color: #4f46e5;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pagination-text {
+  font-size: 0.875rem;
+  color: #4b5563;
+  padding: 0 0.5rem;
+}
+
+/* Thêm định nghĩa cho .text-center */
+.text-center {
+  text-align: center !important;
 }
 </style>

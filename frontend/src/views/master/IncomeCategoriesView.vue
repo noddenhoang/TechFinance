@@ -877,7 +877,6 @@ const statusOptions = [
   color: #4b5563;
   background-color: #f9fafb;
   letter-spacing: 0.05em;
-  cursor: pointer;
 }
 
 .data-table tr:last-child td {
@@ -975,104 +974,85 @@ const statusOptions = [
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.75rem 1.25rem;
+  padding: 0.75rem 1rem;
   background-color: #4f46e5;
   color: white;
-  border-radius: 0.375rem;
-  font-weight: 500;
-  transition: all 0.3s ease;
   border: none;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
   cursor: pointer;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
 .btn-primary:hover {
   background-color: #4338ca;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-}
-
-.btn-primary:disabled {
-  background-color: #818cf8;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
 }
 
 .btn-outline {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.75rem 1.25rem;
+  padding: 0.75rem 1rem;
   background-color: white;
-  color: #4b5563;
-  border: 1px solid #d1d5db;
+  color: #4f46e5;
+  border: 1px solid #4f46e5;
   border-radius: 0.375rem;
-  font-weight: 500;
-  transition: all 0.3s ease;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
   cursor: pointer;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .btn-outline:hover {
-  background-color: #f8fafc;
-  border-color: #9ca3af;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-}
-
-.btn-outline:disabled {
-  color: #9ca3af;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
+  background-color: #f3f4f6;
 }
 
 .btn-danger {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.75rem 1.25rem;
+  padding: 0.75rem 1rem;
   background-color: #ef4444;
   color: white;
-  border-radius: 0.375rem;
-  font-weight: 500;
-  transition: all 0.3s ease;
   border: none;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
   cursor: pointer;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
 .btn-danger:hover {
   background-color: #dc2626;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-}
-
-.btn-danger:disabled {
-  background-color: #fca5a5;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
 }
 
 .btn-close {
-  background: none;
-  border: none;
-  color: #9ca3af;
-  cursor: pointer;
-  font-size: 1.25rem;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: color 0.2s ease;
   width: 2rem;
   height: 2rem;
-  padding: 0;
+  background-color: transparent;
+  color: #4b5563;
+  border: none;
+  border-radius: 0.375rem;
+  font-size: 1.25rem;
+  transition: all 0.2s ease;
+  cursor: pointer;
 }
 
 .btn-close:hover {
-  color: #4b5563;
+  background-color: #f3f4f6;
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 /* MODAL STYLES */
@@ -1080,26 +1060,22 @@ const statusOptions = [
   position: fixed;
   top: 0;
   left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.6);
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 50;
-  padding: 1rem;
-  backdrop-filter: blur(2px);
+  z-index: 1000;
 }
 
 .modal-container {
   background-color: white;
-  border-radius: 0.75rem;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   width: 100%;
-  max-width: 30rem;
-  max-height: 90vh;
-  overflow-y: auto;
-  animation: modal-appear 0.3s ease-out forwards;
+  max-width: 32rem;
+  overflow: hidden;
 }
 
 .modal-confirm {
@@ -1107,8 +1083,8 @@ const statusOptions = [
 }
 
 .modal-header {
-  padding: 1.25rem;
-  border-bottom: 1px solid #e5e7eb;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #e2e8f0;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1116,7 +1092,7 @@ const statusOptions = [
 }
 
 .modal-title {
-  font-size: 1.25rem;
+  font-size: 1.125rem;
   font-weight: 600;
   color: #1e293b;
 }
@@ -1127,13 +1103,20 @@ const statusOptions = [
 
 .modal-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-end; /* Căn phải */
+  width: 100%;
   gap: 0.75rem;
   margin-top: 1.5rem;
+  border-top: none;
+  padding-top: 0;
 }
 
-.modal-actions button {
-  min-width: 6rem;
+.modal-body.text-center .modal-actions {
+  display: flex;
+  justify-content: flex-end !important;
+  width: 100%;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
 }
 
 .icon-warning {
@@ -1143,212 +1126,65 @@ const statusOptions = [
 }
 
 .icon-warning i {
-  font-size: 3rem;
+  font-size: 2rem;
   color: #f59e0b;
 }
 
 .confirm-title {
-  font-size: 1.25rem;
   font-weight: 600;
+  font-size: 1.125rem;
+  margin-bottom: 0.5rem;
   color: #1e293b;
-  margin-bottom: 0.75rem;
+  text-align: center;
+  width: 100%;
 }
 
 .confirm-message {
-  font-size: 0.938rem;
-  color: #374151;
-  line-height: 1.5;
-}
-
-.text-center {
+  color: #4b5563;
   text-align: center;
+  width: 100%;
+  margin-bottom: 1.5rem;
 }
 
-/* CARD EMPTY STATES */
-.card-empty-state {
+.modal-body.text-center .modal-actions {
   display: flex;
-  flex-direction: column;
-  align-items: center;
   justify-content: center;
-  padding: 3rem 1rem;
-  text-align: center;
+  width: 100%;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
 }
 
-.empty-icon, .error-icon {
-  font-size: 3rem;
-  color: #9ca3af;
-  margin-bottom: 1rem;
-}
-
-.error-icon {
-  color: #ef4444;
-}
-
-.empty-description {
-  font-size: 0.875rem;
-  color: #6b7280;
-  margin-top: 0.5rem;
-}
-
-.loading-spinner {
-  border: 3px solid #e5e7eb;
-  border-top: 3px solid #4f46e5;
-  border-radius: 50%;
-  width: 2.5rem;
-  height: 2.5rem;
-  animation: spin 1s linear infinite;
-  margin-bottom: 1rem;
-}
-
-/* NOTIFICATION TOAST */
+/* TOAST NOTIFICATION */
 .toast-notification {
   position: fixed;
-  bottom: 1.5rem;
-  right: 1.5rem;
-  padding: 0.875rem 1.25rem;
-  border-radius: 0.5rem;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: white;
+  border-radius: 0.375rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  padding: 0.75rem 1rem;
   display: flex;
   align-items: center;
-  gap: 0.625rem;
-  font-size: 0.938rem;
+  gap: 0.5rem;
+  font-size: 0.875rem;
   font-weight: 500;
-  color: white;
-  z-index: 50;
-  animation: toast-slide-in 0.3s ease-out forwards;
+  z-index: 1000;
 }
 
 .toast-notification.success {
-  background-color: #10b981;
+  border-left: 4px solid #10b981;
 }
 
 .toast-notification.error {
-  background-color: #ef4444;
+  border-left: 4px solid #ef4444;
 }
 
-/* CHECKBOX STYLES */
-.checkbox-wrapper {
-  display: flex;
-  align-items: center;
-  margin-bottom: 0.5rem;
+.toast-notification i {
+  font-size: 1.25rem;
 }
 
-.checkbox-input {
-  width: 1.125rem;
-  height: 1.125rem;
-  margin-right: 0.5rem;
-  accent-color: #4f46e5;
-}
-
-.checkbox-label {
-  font-size: 0.938rem;
-  color: #374151;
-}
-
-/* BOOTSTRAP ICONS STYLES */
-.bi {
-  display: inline-block;
-  vertical-align: -0.125em;
-  width: 1em;
-  height: 1em;
-  line-height: 1;
-  font-size: inherit;
-}
-
-/* Điều chỉnh icon căn giữa trong các nút */
-.btn-primary .bi,
-.btn-outline .bi,
-.btn-danger .bi,
-.btn-close .bi {
-  vertical-align: -0.125em;
-  position: relative;
-  top: -0.05em;
-}
-
-/* Điều chỉnh icon trong status badge */
-.status-badge .bi {
-  position: relative;
-  top: -0.05em;
-}
-
-/* Điều chỉnh icon trong form error */
-.form-error .bi {
-  position: relative;
-  top: -0.05em;
-}
-
-/* Điều chỉnh icon trong toast notification */
-.toast-notification .bi {
-  position: relative;
-  top: -0.05em;
-}
-
-/* Điều chỉnh icon trong empty state */
-.empty-icon, 
-.error-icon {
-  position: relative;
-  top: 0.125em;
-}
-
-/* Điều chỉnh icon trong warning */
-.icon-warning .bi {
-  position: relative;
-  top: 0;
-}
-
-/* Điều chỉnh icon trong action button */
-.btn-icon .bi {
-  font-size: 1.1em;
-  position: relative;
-  top: 0;
-}
-
-/* Chỉnh spinner alignment */
-.spinner {
-  display: inline-block;
-  position: relative;
-  top: -0.05em;
-}
-
-/* Chỉnh card-title alignment */
-.card-title .bi {
-  position: relative;
-  top: -0.05em;
-}
-
-/* ANIMATIONS */
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.spinner {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes modal-appear {
-  from {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes toast-slide-in {
-  from {
-    opacity: 0;
-    transform: translateX(50px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-/* PAGINATION STYLES */
+/* Thêm CSS cho phân trang */
 .pagination-container {
   display: flex;
   justify-content: space-between;
@@ -1400,18 +1236,8 @@ const statusOptions = [
   padding: 0 0.5rem;
 }
 
-/* Thêm cursor pointer và hiệu ứng cho các header có thể sắp xếp */
-.data-table th.sortable {
-  cursor: pointer;
-  user-select: none;
-}
-
-.data-table th.sortable:hover {
-  background-color: #f1f5f9;
-}
-
-.sort-icon {
-  margin-left: 0.25rem;
-  font-size: 0.75rem;
+/* Thêm định nghĩa cho .text-center */
+.text-center {
+  text-align: center !important;
 }
 </style>

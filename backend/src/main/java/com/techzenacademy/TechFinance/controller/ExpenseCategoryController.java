@@ -9,6 +9,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import com.techzenacademy.TechFinance.dto.page.PageResponse;
 
 import java.util.List;
 
@@ -24,6 +29,29 @@ public class ExpenseCategoryController {
             @RequestParam(name = "name", required = false) String name,
             @RequestParam(name = "isActive", required = false) Boolean isActive) {
         return ResponseEntity.ok(expenseCategoryService.filterCategories(name, isActive));
+    }
+    
+    @GetMapping("/paged")
+    public ResponseEntity<PageResponse<ExpenseCategoryDTO>> getCategoriesPaginated(
+            @RequestParam(name = "name", required = false) String name,
+            @RequestParam(name = "isActive", required = false) Boolean isActive,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "8") int size,
+            @RequestParam(name = "sort", defaultValue = "id,asc") String[] sort) {
+        
+        String sortField = sort[0];
+        String sortDirection = sort.length > 1 ? sort[1] : "asc";
+        
+        Sort.Direction direction = sortDirection.equalsIgnoreCase("asc") ? 
+                Sort.Direction.ASC : Sort.Direction.DESC;
+        Sort sortObj = Sort.by(direction, sortField);
+        
+        Pageable pageable = PageRequest.of(page, size, sortObj);
+        
+        PageResponse<ExpenseCategoryDTO> pagedResponse = 
+                expenseCategoryService.getPagedCategories(name, isActive, pageable);
+                
+        return ResponseEntity.ok(pagedResponse);
     }
     
     @GetMapping("/{id}")
