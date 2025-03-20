@@ -1,6 +1,6 @@
 -- Tạo database
-CREATE DATABASE IF NOT EXISTS techfinance;
-USE techfinance;
+CREATE DATABASE IF NOT EXISTS techfinance1;
+USE techfinance1;
 
 -- Bảng người dùng (Admin)
 CREATE TABLE users (

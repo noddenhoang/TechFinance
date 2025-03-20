@@ -1,25 +1,22 @@
 package com.techzenacademy.TechFinance.repository;
 
 import com.techzenacademy.TechFinance.entity.ExpenseBudget;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
+@Repository
 public interface ExpenseBudgetRepository extends JpaRepository<ExpenseBudget, Integer> {
-    List<ExpenseBudget> findByYearAndMonth(Integer year, Integer month);
-    
     List<ExpenseBudget> findByYear(Integer year);
-    
+    List<ExpenseBudget> findByYearAndMonth(Integer year, Integer month);
+    Page<ExpenseBudget> findByYear(Integer year, Pageable pageable);
+    Page<ExpenseBudget> findByYearAndMonth(Integer year, Integer month, Pageable pageable);
     List<ExpenseBudget> findByCategoryId(Integer categoryId);
-    
+    Page<ExpenseBudget> findByCategoryIdAndYear(Integer categoryId, Integer year, Pageable pageable);
     Optional<ExpenseBudget> findByCategoryIdAndYearAndMonth(Integer categoryId, Integer year, Integer month);
-    
     boolean existsByCategoryIdAndYearAndMonth(Integer categoryId, Integer year, Integer month);
-
-    @Query("SELECT SUM(b.amount) FROM ExpenseBudget b WHERE b.year = :year AND b.month = :month")
-    Optional<BigDecimal> sumAmountByYearAndMonth(@Param("year") Integer year, @Param("month") Integer month);
 }

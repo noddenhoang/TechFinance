@@ -99,7 +99,7 @@ const months = computed(() => [
 const years = computed(() => {
   const currentYear = new Date().getFullYear();
   const yearList = [];
-  for (let i = currentYear - 5; i <= currentYear + 2; i++) {
+  for (let i = 2020; i <= currentYear; i++) {
     yearList.push(i);
   }
   return yearList;
