@@ -26,6 +26,7 @@ public class SupplierController {
     @GetMapping
     public ResponseEntity<PageResponse<SupplierDTO>> getSuppliers(
             @RequestParam(name = "name", required = false) String name,
+            @RequestParam(name = "isActive", required = false) Boolean isActive, // Thêm tham số isActive
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "8") int size,
             @RequestParam(name = "sort", defaultValue = "id,asc") String[] sort) {
@@ -40,7 +41,7 @@ public class SupplierController {
         Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortField));
         
         // Gọi service để lấy dữ liệu với phân trang và filter
-        return ResponseEntity.ok(supplierService.getPagedSuppliers(name, pageable));
+        return ResponseEntity.ok(supplierService.getPagedSuppliers(name, isActive, pageable));
     }
     
     // Giữ nguyên các endpoint hiện có

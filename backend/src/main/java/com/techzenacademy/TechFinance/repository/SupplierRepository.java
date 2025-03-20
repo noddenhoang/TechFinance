@@ -13,6 +13,12 @@ public interface SupplierRepository extends JpaRepository<Supplier, Integer> {
     boolean existsByEmail(String email);
     Optional<Supplier> findByEmail(String email);
     
-    // Thêm phương thức để tìm kiếm theo tên với phân trang
+    // Tìm kiếm theo tên
     Page<Supplier> findByNameContainingIgnoreCase(String name, Pageable pageable);
+    
+    // Tìm kiếm theo isActive
+    Page<Supplier> findByIsActive(Boolean isActive, Pageable pageable);
+    
+    // Tìm kiếm kết hợp theo tên và isActive
+    Page<Supplier> findByNameContainingIgnoreCaseAndIsActive(String name, Boolean isActive, Pageable pageable);
 }

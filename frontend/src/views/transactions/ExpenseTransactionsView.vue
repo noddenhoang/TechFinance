@@ -304,7 +304,7 @@ function openAddModal() {
   
   // Reset form
   modalTransaction.id = null;
-  modalTransaction.categoryId = null;
+  modalTransaction.categoryId = "";
   modalTransaction.supplierId = null;
   modalTransaction.transactionDate = new Date().toISOString().slice(0, 10);
   modalTransaction.amount = '';
@@ -802,7 +802,7 @@ function getSupplierTooltip(supplier) {
                     {{ formatPaymentStatus(transaction.paymentStatus) }}
                   </span>
                 </td>
-                <td class="actions-cell">
+                <td class="action-column text-center">
                   <div class="action-buttons">
                     <button 
                       @click.stop="showTransactionDetails(transaction)"
@@ -902,256 +902,242 @@ function getSupplierTooltip(supplier) {
     </div>
     
     <!-- Transaction Details Modal -->
-    <div v-if="showDetails && selectedTransaction" class="modal-overlay" @click.self="closeDetails">
+    <div v-if="showDetails && selectedTransaction" class="modal-overlay">
       <div class="modal-container">
         <div class="modal-header">
           <h3 class="modal-title">
             <i class="bi bi-info-circle"></i>
             Chi tiết giao dịch
           </h3>
-          <button @click="closeDetails" class="btn-close">
+          <button @click="closeDetails" class="btn-close" title="Đóng">
             <i class="bi bi-x-lg"></i>
           </button>
         </div>
         <div class="modal-body">
-          <div class="detail-row">
-            <div class="detail-label">
-              <i class="bi bi-calendar-event"></i>
-              Ngày giao dịch:
+          <div class="detail-header">
+            <div class="transaction-avatar">
+              <i class="bi bi-cash-coin"></i>
             </div>
-            <div class="detail-value">
-              {{ formatDate(selectedTransaction.transactionDate) }}
-            </div>
+            <h3 class="transaction-amount">{{ formatAmountDisplay(selectedTransaction.amount) }}</h3>
+            <p class="transaction-date">{{ formatDate(selectedTransaction.transactionDate) }}</p>
           </div>
+
+          <div class="detail-section">
+            <h4 class="detail-section-title">Thông tin giao dịch</h4>
           
-          <div class="detail-row">
-            <div class="detail-label">
-              <i class="bi bi-cash"></i>
-              Số tiền:
+            <div class="detail-row">
+              <div class="detail-label">
+                <i class="bi bi-tag"></i>
+                Danh mục:
+              </div>
+              <div class="detail-value">
+                {{ selectedTransaction.categoryName }}
+              </div>
             </div>
-            <div class="detail-value font-medium">
-              {{ formatAmountDisplay(selectedTransaction.amount) }}
-            </div>
-          </div>
-          
-          <div class="detail-row">
-            <div class="detail-label">
-              <i class="bi bi-tag"></i>
-              Danh mục:
-            </div>
-            <div class="detail-value">
-              {{ selectedTransaction.categoryName }}
-            </div>
-          </div>
-          
-          <div class="detail-row">
-            <div class="detail-label">
-              <i class="bi bi-building"></i>
-              Nhà cung cấp:
-            </div>
-            <div class="detail-value">
-              <div class="customer-info">
+            
+            <div class="detail-row">
+              <div class="detail-label">
+                <i class="bi bi-building"></i>
+                Nhà cung cấp:
+              </div>
+              <div class="detail-value">
                 {{ selectedTransaction.supplierName || 'Không có' }}
-                <div v-if="selectedTransaction.supplierId" class="customer-tooltip">
-                  <div class="tooltip-customer-name">{{ selectedTransaction.supplierName }}</div>
-                  <div v-if="getSupplierDetails(selectedTransaction.supplierId)?.phone">
-                    <i class="bi bi-telephone"></i> {{ getSupplierDetails(selectedTransaction.supplierId).phone }}
-                  </div>
-                  <div v-if="getSupplierDetails(selectedTransaction.supplierId)?.email">
-                    <i class="bi bi-envelope"></i> {{ getSupplierDetails(selectedTransaction.supplierId).email }}
-                  </div>
-                </div>
+              </div>
+            </div>
+            
+            <div class="detail-row">
+              <div class="detail-label">
+                <i class="bi bi-credit-card"></i>
+                Trạng thái:
+              </div>
+              <div class="detail-value">
+                <span :class="['status-badge', selectedTransaction.paymentStatus === 'PAID' ? 'active' : 'pending']">
+                  <i :class="[selectedTransaction.paymentStatus === 'PAID' ? 'bi bi-check-circle' : 'bi bi-hourglass-split']"></i>
+                  {{ formatPaymentStatus(selectedTransaction.paymentStatus) }}
+                </span>
+              </div>
+            </div>
+            
+            <div class="detail-row">
+              <div class="detail-label">
+                <i class="bi bi-hash"></i>
+                Số tham chiếu:
+              </div>
+              <div class="detail-value">
+                {{ selectedTransaction.referenceNo || 'Không có' }}
+              </div>
+            </div>
+            
+            <div class="detail-row">
+              <div class="detail-label">
+                <i class="bi bi-card-text"></i>
+                Mô tả:
+              </div>
+              <div class="detail-value description-value">
+                {{ selectedTransaction.description || 'Không có mô tả' }}
               </div>
             </div>
           </div>
           
-          <div class="detail-row">
-            <div class="detail-label">
-              <i class="bi bi-credit-card"></i>
-              Trạng thái:
-            </div>
-            <div class="detail-value">
-              <span :class="['status-badge', selectedTransaction.paymentStatus === 'PAID' ? 'active' : 'pending']">
-                <i :class="[selectedTransaction.paymentStatus === 'PAID' ? 'bi bi-check-circle' : 'bi bi-hourglass-split']"></i>
-                {{ formatPaymentStatus(selectedTransaction.paymentStatus) }}
-              </span>
-            </div>
+          <div v-if="isAdmin" class="modal-actions">
+            <button @click="openEditModal(selectedTransaction)" class="btn-primary">
+              <i class="bi bi-pencil-square"></i>
+              Sửa
+            </button>
+            <button @click="openDeleteModal(selectedTransaction)" class="btn-danger">
+              <i class="bi bi-trash"></i>
+              Xóa
+            </button>
           </div>
-          
-          <div class="detail-row">
-            <div class="detail-label">
-              <i class="bi bi-hash"></i>
-              Số tham chiếu:
-            </div>
-            <div class="detail-value">
-              {{ selectedTransaction.referenceNo || 'Không có' }}
-            </div>
-          </div>
-          
-          <div class="detail-row">
-            <div class="detail-label">
-              <i class="bi bi-card-text"></i>
-              Mô tả:
-            </div>
-            <div class="detail-value description-value">
-              {{ selectedTransaction.description || 'Không có mô tả' }}
-            </div>
-          </div>
-        </div>
-        <div class="modal-actions">
-          <button v-if="isAdmin" @click="openEditModal(selectedTransaction)" class="btn-primary">
-            <i class="bi bi-pencil"></i>
-            Sửa
-          </button>
-          <button v-if="isAdmin" @click="openDeleteModal(selectedTransaction)" class="btn-danger">
-            <i class="bi bi-trash"></i>
-            Xóa
-          </button>
         </div>
       </div>
     </div>
     
     <!-- Add/Edit Transaction Modal -->
-    <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
+    <div v-if="showModal" class="modal-overlay">
       <div class="modal-container">
         <div class="modal-header">
           <h3 class="modal-title">
             <i :class="editMode ? 'bi bi-pencil-square' : 'bi bi-plus-circle'"></i>
             {{ editMode ? 'Cập nhật giao dịch' : 'Thêm giao dịch mới' }}
           </h3>
-          <button @click="closeModal" class="btn-close">
+          <button @click="closeModal" class="btn-close" title="Đóng">
             <i class="bi bi-x-lg"></i>
           </button>
         </div>
         <div class="modal-body">
-          <div class="form-group">
-            <label class="form-label required">Danh mục</label>
-            <select 
-              v-model="modalTransaction.categoryId" 
-              :class="['form-select', modalErrors.categoryId ? 'error' : '']"
-              name="categoryId"
-            >
-              <option value="">Chọn danh mục</option>
-              <option v-for="category in categoriesList" :key="category.id" :value="category.id">
-                {{ category.name }}
-              </option>
-            </select>
-            <div v-if="modalErrors.categoryId" class="form-error">
-              <i class="bi bi-exclamation-circle"></i>
-              {{ modalErrors.categoryId }}
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label required">Danh mục</label>
+              <select 
+                v-model="modalTransaction.categoryId" 
+                :class="['form-select', modalErrors.categoryId ? 'error' : '']"
+                name="categoryId"
+              >
+                <option value="">Chọn danh mục</option>
+                <option v-for="category in categoriesList" :key="category.id" :value="category.id">
+                  {{ category.name }}
+                </option>
+              </select>
+              <span v-if="modalErrors.categoryId" class="form-error">
+                <i class="bi bi-exclamation-circle"></i>
+                {{ modalErrors.categoryId }}
+              </span>
             </div>
-          </div>
-          
-          <div class="form-group">
-            <label class="form-label">Nhà cung cấp</label>
-            <select v-model="modalTransaction.supplierId" class="form-select">
-              <option :value="null">Chọn nhà cung cấp</option>
-              <option v-for="supplier in suppliersList" :key="supplier.id" :value="supplier.id">
-                {{ supplier.name }}
-              </option>
-            </select>
             
-            <!-- Hiển thị thông tin chi tiết nhà cung cấp khi đã chọn -->
-            <div v-if="modalTransaction.supplierId && getSupplierDetails(modalTransaction.supplierId)" class="selected-customer-details mt-2">
-              <div v-if="getSupplierDetails(modalTransaction.supplierId).phone">
-                <i class="bi bi-telephone"></i> {{ getSupplierDetails(modalTransaction.supplierId).phone }}
-              </div>
-              <div v-if="getSupplierDetails(modalTransaction.supplierId).email">
-                <i class="bi bi-envelope"></i> {{ getSupplierDetails(modalTransaction.supplierId).email }}
-              </div>
+            <div class="form-group">
+              <label class="form-label">Nhà cung cấp</label>
+              <select v-model="modalTransaction.supplierId" class="form-select">
+                <option :value="null">Chọn nhà cung cấp</option>
+                <option v-for="supplier in suppliersList" :key="supplier.id" :value="supplier.id">
+                  {{ supplier.name }}
+                </option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label required">Ngày giao dịch</label>
+              <input 
+                v-model="modalTransaction.transactionDate" 
+                type="date" 
+                :class="['form-input', modalErrors.transactionDate ? 'error' : '']"
+              />
+              <span v-if="modalErrors.transactionDate" class="form-error">
+                <i class="bi bi-exclamation-circle"></i>
+                {{ modalErrors.transactionDate }}
+              </span>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label required">Số tiền</label>
+              <input 
+                v-model="modalTransaction.amount" 
+                type="text" 
+                :class="['form-input', modalErrors.amount ? 'error' : '']"
+                placeholder="Nhập số tiền"
+                @input="validateAmount"
+              />
+              <span v-if="modalErrors.amount" class="form-error">
+                <i class="bi bi-exclamation-circle"></i>
+                {{ modalErrors.amount }}
+              </span>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Trạng thái thanh toán</label>
+              <select v-model="modalTransaction.paymentStatus" class="form-select">
+                <option value="PAID">Đã thanh toán</option>
+                <option value="UNPAID">Chưa thanh toán</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Số tham chiếu</label>
+              <input 
+                v-model="modalTransaction.referenceNo" 
+                type="text" 
+                class="form-input"
+                placeholder="Nhập số tham chiếu (nếu có)"
+              />
+            </div>
+            
+            <div class="form-group" style="grid-column: span 2;">
+              <label class="form-label">Mô tả</label>
+              <textarea 
+                v-model="modalTransaction.description" 
+                class="form-textarea"
+                rows="3"
+                placeholder="Nhập mô tả giao dịch (nếu có)"
+              ></textarea>
             </div>
           </div>
           
-          <div class="form-group">
-            <label class="form-label required">Ngày giao dịch</label>
-            <input 
-              v-model="modalTransaction.transactionDate" 
-              type="date" 
-              :class="['form-input', modalErrors.transactionDate ? 'error' : '']"
-            />
-            <div v-if="modalErrors.transactionDate" class="form-error">
-              <i class="bi bi-exclamation-circle"></i>
-              {{ modalErrors.transactionDate }}
-            </div>
+          <div class="modal-actions">
+            <button @click="closeModal" class="btn-outline" :disabled="saving">
+              <i class="bi bi-x-lg"></i>
+              Hủy
+            </button>
+            <button @click="saveTransaction" class="btn-primary" :disabled="saving">
+              <i v-if="saving" class="bi bi-arrow-repeat spinner"></i>
+              <i v-else class="bi bi-save"></i>
+              {{ saving ? 'Đang lưu...' : 'Lưu giao dịch' }}
+            </button>
           </div>
-          
-          <div class="form-group">
-            <label class="form-label required">Số tiền</label>
-            <input 
-              v-model="modalTransaction.amount" 
-              type="text" 
-              :class="['form-input', modalErrors.amount ? 'error' : '']"
-              placeholder="Nhập số tiền"
-              @input="validateAmount"
-            />
-            <div v-if="modalErrors.amount" class="form-error">
-              <i class="bi bi-exclamation-circle"></i>
-              {{ modalErrors.amount }}
-            </div>
-          </div>
-          
-          <div class="form-group">
-            <label class="form-label">Trạng thái thanh toán</label>
-            <select v-model="modalTransaction.paymentStatus" class="form-select">
-              <option value="PAID">Đã thanh toán</option>
-              <option value="UNPAID">Chưa thanh toán</option>
-            </select>
-          </div>
-          
-          <div class="form-group">
-            <label class="form-label">Số tham chiếu</label>
-            <input 
-              v-model="modalTransaction.referenceNo" 
-              type="text" 
-              class="form-input"
-              placeholder="Nhập số tham chiếu (nếu có)"
-            />
-          </div>
-          
-          <div class="form-group">
-            <label class="form-label">Mô tả</label>
-            <textarea 
-              v-model="modalTransaction.description" 
-              class="form-textarea"
-              rows="3"
-              placeholder="Nhập mô tả giao dịch (nếu có)"
-            ></textarea>
-          </div>
-        </div>
-        <div class="modal-actions">
-          <button @click="closeModal" class="btn-secondary" :disabled="saving">
-            <i class="bi bi-x"></i>
-            Hủy
-          </button>
-          <button @click="saveTransaction" class="btn-primary" :disabled="saving">
-            <i class="bi" :class="[saving ? 'bi-arrow-repeat spinner' : 'bi-save']"></i>
-            {{ saving ? 'Đang lưu...' : 'Lưu giao dịch' }}
-          </button>
         </div>
       </div>
     </div>
     
     <!-- Delete Confirmation Modal -->
-    <div v-if="showDeleteModal" class="modal-overlay" @click.self="closeDeleteModal">
+    <div v-if="showDeleteModal" class="modal-overlay">
       <div class="modal-container modal-confirm">
-        <div class="modal-body">
-          <div class="icon-warning">
-            <i class="bi bi-exclamation-triangle"></i>
-          </div>
-          <h4 class="confirm-title text-center">Xác nhận xóa giao dịch</h4>
-          <p class="confirm-message text-center">
-            Bạn có chắc chắn muốn xóa giao dịch này không? Hành động này không thể hoàn tác.
-          </p>
+        <div class="modal-header">
+          <h3 class="modal-title">Xác nhận xóa</h3>
+          <button @click="closeDeleteModal" class="btn-close" title="Đóng">
+            <i class="bi bi-x-lg"></i>
+          </button>
         </div>
-        <div class="modal-actions">
-          <button @click="closeDeleteModal" class="btn-secondary" :disabled="deleting">
-            <i class="bi bi-x"></i>
-            Hủy
-          </button>
-          <button @click="deleteTransaction" class="btn-danger" :disabled="deleting">
-            <i class="bi" :class="[deleting ? 'bi-arrow-repeat spinner' : 'bi-trash']"></i>
-            {{ deleting ? 'Đang xóa...' : 'Xóa' }}
-          </button>
+        
+        <div class="modal-body text-center">
+          <div class="icon-warning">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+          </div>
+          <h4 class="confirm-title">Bạn có chắc chắn muốn xóa?</h4>
+          <p class="confirm-message">
+            Giao dịch này sẽ bị xóa vĩnh viễn.
+            <br>Hành động này không thể hoàn tác.
+          </p>
+          
+          <div class="modal-actions">
+            <button @click="closeDeleteModal" class="btn-outline">
+              <i class="bi bi-x-lg"></i>
+              Hủy bỏ
+            </button>
+            <button @click="deleteTransaction" class="btn-danger" :disabled="deleting">
+              <i v-if="deleting" class="bi bi-arrow-repeat spinner"></i>
+              <i v-else class="bi bi-trash"></i>
+              {{ deleting ? 'Đang xóa...' : 'Xóa' }}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -1161,6 +1147,19 @@ function getSupplierTooltip(supplier) {
 <style scoped>
 /* Component-specific styles only */
 /* All common styles have been moved to assets/styles/common.css */
+
+/* Modal layout customizations */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .form-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
 
 /* Custom tooltip styling for supplier info */
 .customer-info {
@@ -1202,45 +1201,53 @@ function getSupplierTooltip(supplier) {
   color: #4b5563;
 }
 
-/* Style for selected customer details in form */
-.selected-customer-details {
-  margin-top: 0.5rem;
-  padding: 0.5rem;
-  background-color: #f8fafc;
-  border-radius: 0.375rem;
-  border: 1px solid #e2e8f0;
-  font-size: 0.875rem;
-  color: #4b5563;
-}
-
-.selected-customer-details div {
-  margin-bottom: 0.25rem;
+/* Transaction detail specific styles */
+.transaction-avatar {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 50%;
+  background-color: #e0e7ff;
   display: flex;
   align-items: center;
+  justify-content: center;
+  margin: 0 auto 1rem;
 }
 
-.selected-customer-details div:last-child {
-  margin-bottom: 0;
+.transaction-avatar i {
+  font-size: 2rem;
+  color: #4f46e5;
 }
 
-.selected-customer-details i {
-  margin-right: 0.5rem;
+.transaction-amount {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 0.25rem;
+  text-align: center;
+}
+
+.transaction-date {
+  color: #64748b;
+  margin: 0;
+  text-align: center;
+}
+
+.detail-section {
+  margin: 1.5rem 0;
+}
+
+.detail-section-title {
   font-size: 0.875rem;
-  color: #6366f1;
+  font-weight: 600;
+  color: #4b5563;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 1rem;
 }
 
-/* Detail rows in transaction details modal */
 .detail-row {
   display: flex;
-  margin-bottom: 1rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid #f1f5f9;
-}
-
-.detail-row:last-child {
-  margin-bottom: 0;
-  padding-bottom: 0;
-  border-bottom: none;
+  margin-bottom: 0.75rem;
 }
 
 .detail-label {
@@ -1295,11 +1302,11 @@ function getSupplierTooltip(supplier) {
 }
 
 .summary-value.paid {
-  color: #10b981; /* Màu xanh lá */
+  color: #10b981; /* Green color for paid */
 }
 
 .summary-value.pending {
-  color: #f59e0b; /* Màu cam */
+  color: #f59e0b; /* Orange color for pending */
 }
 
 @media (max-width: 768px) {

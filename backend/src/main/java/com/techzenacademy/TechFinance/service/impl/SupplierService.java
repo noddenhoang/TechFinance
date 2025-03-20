@@ -42,24 +42,24 @@ public class SupplierService {
      * Filter suppliers with pagination
      * 
      * @param name Filter by name containing this string (case-insensitive)
+     * @param isActive Filter by active status
      * @param pageable Pagination information
      * @return PageResponse containing filtered suppliers
      */
-    public PageResponse<SupplierDTO> getPagedSuppliers(String name, Pageable pageable) {
+    public PageResponse<SupplierDTO> getPagedSuppliers(String name, Boolean isActive, Pageable pageable) {
         Page<Supplier> supplierPage;
         
-        if (name != null && !name.trim().isEmpty()) {
-            // Sử dụng repository để lọc theo tên
+        if (name != null && isActive != null) {
+            supplierPage = supplierRepository.findByNameContainingIgnoreCaseAndIsActive(name, isActive, pageable);
+        } else if (name != null) {
             supplierPage = supplierRepository.findByNameContainingIgnoreCase(name, pageable);
+        } else if (isActive != null) {
+            supplierPage = supplierRepository.findByIsActive(isActive, pageable);
         } else {
-            // Nếu không có filter, lấy tất cả với phân trang
             supplierPage = supplierRepository.findAll(pageable);
         }
         
-        // Map kết quả sang DTO
         Page<SupplierDTO> dtoPage = supplierPage.map(this::mapToDTO);
-        
-        // Trả về custom page response
         return new PageResponse<>(dtoPage);
     }
     

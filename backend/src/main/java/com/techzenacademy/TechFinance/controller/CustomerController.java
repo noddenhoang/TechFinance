@@ -79,22 +79,4 @@ public class CustomerController {
         customerService.deleteCustomer(id);
         return ResponseEntity.noContent().build();
     }
-    
-    @Deprecated
-    @GetMapping("/paged")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<PageResponse<CustomerDTO>> getCustomersPaginated(
-            @RequestParam(name = "name", required = false) String name,
-            @RequestParam(name = "email", required = false) String email,
-            @RequestParam(name = "phone", required = false) String phone,
-            @RequestParam(name = "address", required = false) String address,
-            @RequestParam(name = "isActive", required = false) Boolean isActive,
-            @RequestParam(name = "page", defaultValue = "0") int page,
-            @RequestParam(name = "size", defaultValue = "8") int size,
-            @RequestParam(name = "sort", defaultValue = "id,asc") String[] sort) {
-        
-        return ResponseEntity.status(HttpStatus.MOVED_PERMANENTLY)
-                .header("Location", "/api/customers?page=" + page + "&size=" + size)
-                .build();
-    }
 }

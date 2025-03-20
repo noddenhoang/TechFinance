@@ -13,11 +13,17 @@ export const suppliers = {
         params.append('name', filters.name);
       }
       
+      // Thêm filter isActive nếu được cung cấp
+      if (filters.isActive !== undefined && filters.isActive !== null) {
+        params.append('isActive', filters.isActive);
+      }
+      
       // Add pagination parameters
       params.append('page', page.toString());
       params.append('size', size.toString());
       params.append('sort', `${sortField},${sortDirection}`);
       
+      // ĐÂY LÀ PHẦN THIẾU - XÂY DỰNG URL VÀ THỰC HIỆN REQUEST
       const queryString = params.toString() ? `?${params.toString()}` : '';
       const token = localStorage.getItem('token');
       
@@ -26,6 +32,7 @@ export const suppliers = {
           'Authorization': `Bearer ${token}`
         }
       });
+      
       return response.data;
     } catch (error) {
       console.error('Error fetching suppliers:', error);

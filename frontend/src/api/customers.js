@@ -13,6 +13,11 @@ export const customers = {
         params.append('name', filters.name);
       }
       
+      // Thêm filter isActive nếu được cung cấp
+      if (filters.isActive !== undefined && filters.isActive !== null) {
+        params.append('isActive', filters.isActive);
+      }
+      
       // Add pagination parameters
       params.append('page', page.toString());
       params.append('size', size.toString());
