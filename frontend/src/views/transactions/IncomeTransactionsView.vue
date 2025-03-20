@@ -752,14 +752,7 @@ function getCustomerTooltip(customer) {
                 <td>
                   <div class="customer-info">
                     {{ transaction.customerName || 'Không có' }}
-                    <div v-if="transaction.customerId" class="customer-tooltip">
-                      <div class="tooltip-customer-name">{{ transaction.customerName }}</div>
-                      <div v-if="getCustomerDetails(transaction.customerId)?.phone">
-                        <i class="bi bi-telephone"></i> {{ getCustomerDetails(transaction.customerId)?.phone }}
-                      </div>
-                      <div v-if="getCustomerDetails(transaction.customerId)?.email">
-                        <i class="bi bi-envelope"></i> {{ getCustomerDetails(transaction.customerId)?.email }}
-                      </div>
+                    <div v-if="transaction.customerId">
                     </div>
                   </div>
                 </td>

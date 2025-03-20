@@ -785,14 +785,7 @@ function getSupplierTooltip(supplier) {
                 <td>
                   <div class="customer-info">
                     {{ transaction.supplierName || 'Không có' }}
-                    <div v-if="transaction.supplierId" class="customer-tooltip">
-                      <div class="tooltip-customer-name">{{ transaction.supplierName }}</div>
-                      <div v-if="getSupplierDetails(transaction.supplierId)?.phone">
-                        <i class="bi bi-telephone"></i> {{ getSupplierDetails(transaction.supplierId)?.phone }}
-                      </div>
-                      <div v-if="getSupplierDetails(transaction.supplierId)?.email">
-                        <i class="bi bi-envelope"></i> {{ getSupplierDetails(transaction.supplierId)?.email }}
-                      </div>
+                    <div v-if="transaction.supplierId">
                     </div>
                   </div>
                 </td>
