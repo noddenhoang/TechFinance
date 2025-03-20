@@ -546,6 +546,25 @@ function getSortIcon(field) {
   }
   return sorting.direction === 'asc' ? 'bi bi-sort-up' : 'bi bi-sort-down';
 }
+
+// Thêm vào phần script của IncomeTransactionsView.vue
+function getCustomerDetails(customerId) {
+  if (!customerId) return null;
+  
+  const customer = customersList.value.find(c => c.id === customerId);
+  return customer || null;
+}
+
+// Hàm tạo nội dung tooltip cho khách hàng
+function getCustomerTooltip(customer) {
+  if (!customer) return '';
+  
+  let tooltip = `${customer.name}`;
+  if (customer.phone) tooltip += `\nSĐT: ${customer.phone}`;
+  if (customer.email) tooltip += `\nEmail: ${customer.email}`;
+  
+  return tooltip;
+}
 </script>
 
 <template>
@@ -732,7 +751,20 @@ function getSortIcon(field) {
                   <td>{{ formatDate(transaction.transactionDate) }}</td>
                   <td class="amount-cell">{{ formatAmountDisplay(transaction.amount) }}</td>
                   <td>{{ transaction.categoryName }}</td>
-                  <td>{{ transaction.customerName || 'Không có' }}</td>
+                  <td>
+                    <div class="customer-info">
+                      {{ transaction.customerName || 'Không có' }}
+                      <div v-if="transaction.customerId" class="customer-tooltip">
+                        <div class="tooltip-customer-name">{{ transaction.customerName }}</div>
+                        <div v-if="getCustomerDetails(transaction.customerId)?.phone">
+                          <i class="bi bi-telephone"></i> {{ getCustomerDetails(transaction.customerId)?.phone }}
+                        </div>
+                        <div v-if="getCustomerDetails(transaction.customerId)?.email">
+                          <i class="bi bi-envelope"></i> {{ getCustomerDetails(transaction.customerId)?.email }}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
                   <td>
                     <span :class="['status-badge', transaction.paymentStatus === 'RECEIVED' ? 'active' : 'pending']">
                       <i :class="[transaction.paymentStatus === 'RECEIVED' ? 'bi bi-check-circle' : 'bi bi-hourglass-split']"></i>
@@ -959,10 +991,20 @@ function getSortIcon(field) {
               <label class="form-label">Khách hàng</label>
               <select v-model="modalTransaction.customerId" class="form-select">
                 <option :value="null">Chọn khách hàng</option>
-                <option v-for="customer in customersList" :key="customer.id" :value="customer.id">
+                <option v-for="customer in customersList" :key="customer.id" :value="customer.id" :title="getCustomerTooltip(customer)">
                   {{ customer.name }}
                 </option>
               </select>
+              
+              <!-- Thêm phần hiển thị thông tin chi tiết khách hàng khi đã chọn -->
+              <div v-if="modalTransaction.customerId && getCustomerDetails(modalTransaction.customerId)" class="selected-customer-details">
+                <div v-if="getCustomerDetails(modalTransaction.customerId).phone">
+                  <i class="bi bi-telephone"></i> {{ getCustomerDetails(modalTransaction.customerId).phone }}
+                </div>
+                <div v-if="getCustomerDetails(modalTransaction.customerId).email">
+                  <i class="bi bi-envelope"></i> {{ getCustomerDetails(modalTransaction.customerId).email }}
+                </div>
+              </div>
             </div>
             
             <div class="form-group">
@@ -1201,5 +1243,84 @@ function getSortIcon(field) {
 .description-value {
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+/* Thêm vào <style scoped> trong IncomeTransactionsView.vue */
+.customer-info {
+  position: relative;
+  cursor: pointer;
+}
+
+.customer-tooltip {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 10;
+  background-color: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.375rem;
+  padding: 0.75rem;
+  min-width: 200px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  font-size: 0.875rem;
+}
+
+.customer-info:hover .customer-tooltip {
+  display: block;
+}
+
+.tooltip-customer-name {
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+
+.customer-tooltip div {
+  margin-bottom: 0.25rem;
+}
+
+.customer-tooltip i {
+  margin-right: 0.25rem;
+  font-size: 0.75rem;
+  color: #4b5563;
+}
+
+.selected-customer-details {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: #4b5563;
+}
+
+.selected-customer-details i {
+  margin-right: 0.25rem;
+  font-size: 0.75rem;
+  color: #4b5563;
+}
+
+/* Thêm CSS cho hiển thị thông tin chi tiết khách hàng trong form */
+.selected-customer-details {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background-color: #f8fafc;
+  border-radius: 0.375rem;
+  border: 1px solid #e2e8f0;
+  font-size: 0.875rem;
+  color: #4b5563;
+}
+
+.selected-customer-details div {
+  margin-bottom: 0.25rem;
+  display: flex;
+  align-items: center;
+}
+
+.selected-customer-details div:last-child {
+  margin-bottom: 0;
+}
+
+.selected-customer-details i {
+  margin-right: 0.5rem;
+  font-size: 0.875rem;
+  color: #6366f1;
 }
 </style>
