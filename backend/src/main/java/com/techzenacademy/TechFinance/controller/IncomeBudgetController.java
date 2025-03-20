@@ -50,56 +50,32 @@ public class IncomeBudgetController {
         return ResponseEntity.ok(result);
     }
     
-    // @GetMapping("/all")
-    // @Operation(summary = "Lấy tất cả ngân sách thu nhập không phân trang")
-    // public ResponseEntity<List<IncomeBudgetDTO>> getAllBudgets() {
-    //     return ResponseEntity.ok(incomeBudgetService.getAllBudgets());
-    // }
-    
-    // @GetMapping("/year/{year}")
-    // @Operation(summary = "Lấy ngân sách theo năm")
-    // public ResponseEntity<List<IncomeBudgetDTO>> getBudgetsByYear(@PathVariable("year") Integer year) {
-    //     return ResponseEntity.ok(incomeBudgetService.getBudgetsByYear(year));
-    // }
-    
-    // @GetMapping("/period")
-    // @Operation(summary = "Lấy ngân sách theo năm và tháng")
-    // public ResponseEntity<List<IncomeBudgetDTO>> getBudgetsByYearAndMonth(
-    //         @RequestParam("year") Integer year,
-    //         @RequestParam("month") Integer month) {
-    //     return ResponseEntity.ok(incomeBudgetService.getBudgetsByYearAndMonth(year, month));
-    // }
-    
-    // @GetMapping("/category/{categoryId}")
-    // @Operation(summary = "Lấy ngân sách theo danh mục")
-    // public ResponseEntity<List<IncomeBudgetDTO>> getBudgetsByCategory(@PathVariable("categoryId") Integer categoryId) {
-    //     return ResponseEntity.ok(incomeBudgetService.getBudgetsByCategory(categoryId));
-    // }
-    
-    // @GetMapping("/category/{categoryId}/period")
-    // @Operation(summary = "Lấy ngân sách theo danh mục, năm và tháng")
-    // public ResponseEntity<IncomeBudgetDTO> getBudgetByCategoryAndPeriod(
-    //         @PathVariable("categoryId") Integer categoryId,
-    //         @RequestParam("year") Integer year,
-    //         @RequestParam("month") Integer month) {
-    //     return ResponseEntity.ok(incomeBudgetService.getBudgetByCategoryAndPeriod(categoryId, year, month));
-    // }
-    
     @GetMapping("/{id}")
     @Operation(summary = "Lấy ngân sách theo ID")
     public ResponseEntity<IncomeBudgetDTO> getBudgetById(@PathVariable("id") Integer id) {
         return ResponseEntity.ok(incomeBudgetService.getBudgetById(id));
     }
     
+    @GetMapping("/refresh")
+    @Operation(summary = "Cập nhật lại ngân sách thu nhập dựa trên thu nhập thực tế")
+    public ResponseEntity<Void> refreshBudgets(
+            @RequestParam(name = "year", required = false) Integer year,
+            @RequestParam(name = "month", required = false) Integer month) {
+        
+        // Nếu không cung cấp năm và tháng, hệ thống sẽ cập nhật cho tháng hiện tại
+        incomeBudgetService.refreshBudgets(year, month);
+        return ResponseEntity.ok().build();
+    }
+    
     @PostMapping
-    @PreAuthorize("hasRole('admin')")
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
     @Operation(summary = "Tạo mới ngân sách thu nhập")
     public ResponseEntity<IncomeBudgetDTO> createBudget(@Valid @RequestBody IncomeBudgetRequest request) {
         return new ResponseEntity<>(incomeBudgetService.createBudget(request), HttpStatus.CREATED);
     }
     
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('admin')")
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
     @Operation(summary = "Cập nhật ngân sách thu nhập")
     public ResponseEntity<IncomeBudgetDTO> updateBudget(
             @PathVariable("id") Integer id,
@@ -108,7 +84,7 @@ public class IncomeBudgetController {
     }
     
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('admin')")
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
     @Operation(summary = "Xóa ngân sách thu nhập")
     public ResponseEntity<Void> deleteBudget(@PathVariable("id") Integer id) {
         incomeBudgetService.deleteBudget(id);

@@ -1,48 +1,789 @@
 <script setup>
-import AppLayout from '../../components/layouts/AppLayout.vue'
+import { ref, reactive, computed, onMounted } from 'vue';
+import { useAuthStore } from '../../stores/auth';
+import AppLayout from '../../components/layouts/AppLayout.vue';
+import { incomeBudgets } from '../../api/incomeBudgets';
+import { incomeCategories } from '../../api/incomeCategories';
+
+// Auth store để kiểm tra quyền hạn
+const auth = useAuthStore();
+
+// Dữ liệu và trạng thái
+const budgetsList = ref([]);
+const categories = ref([]);
+const isLoading = ref(true);
+
+// Filter
+const filters = reactive({
+  year: new Date().getFullYear(),
+  month: new Date().getMonth() + 1,
+  categoryId: null
+});
+
+// Pagination
+const pagination = reactive({
+  currentPage: 0,
+  totalPages: 0,
+  totalItems: 0,
+  pageSize: 10
+});
+
+// Sorting
+const sorting = reactive({
+  field: 'year',
+  direction: 'desc'
+});
+
+// Modal states
+const showCreateBudgetModal = ref(false);
+const showEditBudgetModal = ref(false);
+const showDeleteBudgetModal = ref(false);
+const showBudgetDetailsModal = ref(false);
+const currentBudget = ref({});
+const budgetForm = ref({
+  categoryId: null,
+  year: new Date().getFullYear(),
+  month: new Date().getMonth() + 1,
+  amount: '',
+  notes: ''
+});
+
+// Validation errors
+const errors = ref({});
+
+// Notification
+const notification = reactive({
+  show: false,
+  message: '',
+  type: 'success'
+});
+
+// Computed properties
+const isAdmin = computed(() => {
+  if (!auth.user) return false;
+  
+  // Log cho debug
+  console.log("User privileges:", auth.user);
+  
+  if (auth.user.role === 'ADMIN' || auth.user.role === 'ROLE_ADMIN') {
+    return true;
+  }
+  
+  // Kiểm tra authorities
+  if (auth.user.authorities) {
+    return auth.user.authorities.some(authority => 
+      typeof authority === 'string' 
+        ? authority.includes('ADMIN') 
+        : authority.authority && authority.authority.includes('ADMIN')
+    );
+  }
+  
+  return false;
+});
+
+const months = computed(() => [
+  { id: 1, name: 'Tháng 1' },
+  { id: 2, name: 'Tháng 2' },
+  { id: 3, name: 'Tháng 3' },
+  { id: 4, name: 'Tháng 4' },
+  { id: 5, name: 'Tháng 5' },
+  { id: 6, name: 'Tháng 6' },
+  { id: 7, name: 'Tháng 7' },
+  { id: 8, name: 'Tháng 8' },
+  { id: 9, name: 'Tháng 9' },
+  { id: 10, name: 'Tháng 10' },
+  { id: 11, name: 'Tháng 11' },
+  { id: 12, name: 'Tháng 12' }
+]);
+
+const years = computed(() => {
+  const currentYear = new Date().getFullYear();
+  const yearList = [];
+  for (let i = currentYear - 5; i <= currentYear + 2; i++) {
+    yearList.push(i);
+  }
+  return yearList;
+});
+
+// Methods
+const loadData = async () => {
+  isLoading.value = true;
+  try {
+    // Load danh sách danh mục thu nhập
+    const categoriesResult = await incomeCategories.getAll();
+    categories.value = categoriesResult.content || categoriesResult;
+    
+    // Load danh sách ngân sách thu nhập với filter
+    const result = await incomeBudgets.getAll(
+      filters,
+      pagination.currentPage,
+      pagination.pageSize,
+      sorting.field,
+      sorting.direction
+    );
+    
+    budgetsList.value = result.content || [];
+    
+    // Cập nhật thông tin phân trang
+    if (result.page) {
+      pagination.currentPage = result.page.page || 0;
+      pagination.totalPages = result.page.totalPages || 0;
+      pagination.totalItems = result.page.totalElements || result.page.totalElement || 0;
+    }
+  } catch (error) {
+    console.error('Error loading budgets:', error);
+    showNotification('Không thể tải dữ liệu ngân sách. Vui lòng thử lại sau.', 'error');
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+const refreshBudgets = async () => {
+  try {
+    await incomeBudgets.refresh(filters.year, filters.month);
+    showNotification('Ngân sách đã được cập nhật tự động dựa trên thu nhập thực tế', 'success');
+    loadData();
+  } catch (error) {
+    console.error('Error refreshing budgets:', error);
+    showNotification('Không thể cập nhật ngân sách. Vui lòng thử lại sau.', 'error');
+  }
+};
+
+const applyFilter = () => {
+  pagination.currentPage = 0;
+  loadData();
+};
+
+const resetFilter = () => {
+  filters.year = new Date().getFullYear();
+  filters.month = null;
+  filters.categoryId = null;
+  pagination.currentPage = 0;
+  loadData();
+};
+
+const sortBy = (field) => {
+  if (sorting.field === field) {
+    sorting.direction = sorting.direction === 'asc' ? 'desc' : 'asc';
+  } else {
+    sorting.field = field;
+    sorting.direction = 'asc';
+  }
+  loadData();
+};
+
+const goToPage = (page) => {
+  if (page >= 0 && page < pagination.totalPages) {
+    pagination.currentPage = page;
+    loadData();
+  }
+};
+
+const resetForm = () => {
+  budgetForm.value = {
+    categoryId: null,
+    year: new Date().getFullYear(),
+    month: new Date().getMonth() + 1,
+    amount: '',
+    notes: ''
+  };
+  errors.value = {};
+};
+
+const openCreateBudgetModal = () => {
+  resetForm();
+  showCreateBudgetModal.value = true;
+};
+
+const openEditBudgetModal = (budget) => {
+  currentBudget.value = { ...budget };
+  budgetForm.value = {
+    categoryId: budget.categoryId,
+    year: budget.year,
+    month: budget.month,
+    amount: budget.amount,
+    notes: budget.notes || ''
+  };
+  showEditBudgetModal.value = true;
+};
+
+const openDeleteBudgetModal = (budget) => {
+  currentBudget.value = { ...budget };
+  showDeleteBudgetModal.value = true;
+};
+
+const openBudgetDetailsModal = (budget) => {
+  currentBudget.value = { ...budget };
+  showBudgetDetailsModal.value = true;
+};
+
+const validateForm = () => {
+  const newErrors = {};
+  
+  if (!budgetForm.value.categoryId) {
+    newErrors.categoryId = 'Danh mục không được để trống';
+  }
+  
+  if (!budgetForm.value.year) {
+    newErrors.year = 'Năm không được để trống';
+  }
+  
+  if (!budgetForm.value.month) {
+    newErrors.month = 'Tháng không được để trống';
+  }
+  
+  if (!budgetForm.value.amount) {
+    newErrors.amount = 'Số tiền không được để trống';
+  } else if (isNaN(budgetForm.value.amount) || parseFloat(budgetForm.value.amount) <= 0) {
+    newErrors.amount = 'Số tiền phải là số dương';
+  }
+  
+  errors.value = newErrors;
+  return Object.keys(newErrors).length === 0;
+};
+
+const saveBudget = async () => {
+  if (!validateForm()) return;
+  
+  try {
+    const budgetData = {
+      categoryId: budgetForm.value.categoryId,
+      year: budgetForm.value.year,
+      month: budgetForm.value.month,
+      amount: parseFloat(budgetForm.value.amount),
+      notes: budgetForm.value.notes
+    };
+    
+    if (currentBudget.value.id) {
+      // Cập nhật ngân sách hiện có
+      await incomeBudgets.update(currentBudget.value.id, budgetData);
+      showNotification('Ngân sách đã được cập nhật thành công', 'success');
+    } else {
+      // Tạo ngân sách mới
+      await incomeBudgets.create(budgetData);
+      showNotification('Ngân sách đã được tạo thành công', 'success');
+    }
+    
+    showCreateBudgetModal.value = false;
+    showEditBudgetModal.value = false;
+    loadData();
+  } catch (error) {
+    console.error('Error saving budget:', error);
+    showNotification('Không thể lưu ngân sách. Vui lòng thử lại sau.', 'error');
+  }
+};
+
+const deleteBudget = async () => {
+  try {
+    await incomeBudgets.delete(currentBudget.value.id);
+    showDeleteBudgetModal.value = false;
+    showNotification('Ngân sách đã được xóa thành công', 'success');
+    loadData();
+  } catch (error) {
+    console.error('Error deleting budget:', error);
+    showNotification('Không thể xóa ngân sách. Vui lòng thử lại sau.', 'error');
+  }
+};
+
+const showNotification = (message, type = 'success') => {
+  notification.message = message;
+  notification.type = type;
+  notification.show = true;
+  
+  setTimeout(() => {
+    notification.show = false;
+  }, 3000);
+};
+
+const formatNumber = (value) => {
+  if (!value) return '0';
+  return new Intl.NumberFormat('vi-VN').format(value);
+};
+
+// Lifecycle hooks
+onMounted(() => {
+  loadData();
+});
 </script>
 
 <template>
   <AppLayout>
     <template #page-title>Ngân sách thu nhập</template>
     
-    <div class="content-box">
-      <h2>Quản lý ngân sách thu nhập</h2>
-      <p>Trang này cho phép bạn quản lý kế hoạch ngân sách thu nhập theo tháng/năm.</p>
-      
-      <!-- Dữ liệu ngân sách thu nhập sẽ được hiển thị ở đây -->
-      <div class="placeholder-content">
-        <p>Đang phát triển: Quản lý ngân sách thu nhập</p>
+    <div class="content-container">
+      <!-- Filter Section -->
+      <div class="filter-container">
+        <div class="filter-header">
+          <h3 class="card-title">
+            <i class="bi bi-funnel-fill"></i> Bộ lọc ngân sách
+          </h3>
+        </div>
+        <div class="filter-content">
+          <div class="filter-grid">
+            <div class="form-group">
+              <label class="form-label">Năm</label>
+              <select v-model="filters.year" class="form-select">
+                <option v-for="year in years" :key="year" :value="year">{{ year }}</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Tháng</label>
+              <select v-model="filters.month" class="form-select">
+                <option :value="null">Tất cả các tháng</option>
+                <option v-for="month in months" :key="month.id" :value="month.id">{{ month.name }}</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Danh mục</label>
+              <select v-model="filters.categoryId" class="form-select">
+                <option :value="null">Tất cả danh mục</option>
+                <option v-for="category in categories" :key="category.id" :value="category.id">{{ category.name }}</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="filter-actions">
+            <button @click="resetFilter" class="btn-secondary">
+              <i class="bi bi-arrow-counterclockwise"></i> Đặt lại
+            </button>
+            <button @click="applyFilter" class="btn-primary">
+              <i class="bi bi-search"></i> Áp dụng
+            </button>
+          </div>
+        </div>
       </div>
+      
+      <!-- Main Content -->
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">
+            <i class="bi bi-cash-stack"></i> Ngân sách thu nhập
+          </h3>
+          
+          <div class="action-buttons">
+            <button @click="refreshBudgets" class="btn-outline">
+              <i class="bi bi-arrow-repeat"></i> Cập nhật tự động
+            </button>
+            <button v-if="isAdmin" @click="openCreateBudgetModal" class="btn-primary">
+              <i class="bi bi-plus-lg"></i> Thêm ngân sách
+            </button>
+          </div>
+        </div>
+        
+        <!-- Loading State -->
+        <div v-if="isLoading" class="card-empty-state">
+          <div class="loading-spinner"></div>
+          <p>Đang tải dữ liệu...</p>
+        </div>
+        
+        <!-- Empty State -->
+        <div v-else-if="budgetsList.length === 0" class="card-empty-state">
+          <i class="bi bi-cash-stack empty-icon"></i>
+          <h4>Không có dữ liệu ngân sách</h4>
+          <p class="empty-description">Hệ thống sẽ tự động cập nhật ngân sách dựa trên thu nhập thực tế đã nhận.</p>
+        </div>
+        
+        <!-- Data Table -->
+        <div v-else class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th @click="sortBy('id')" class="sortable">
+                  ID 
+                  <i v-if="sorting.field === 'id'" 
+                    :class="[
+                      'sort-icon',
+                      'bi',
+                      sorting.direction === 'asc' ? 'bi-arrow-up' : 'bi-arrow-down'
+                    ]">
+                  </i>
+                </th>
+                <th @click="sortBy('categoryName')" class="sortable">
+                  Danh mục
+                  <i v-if="sorting.field === 'categoryName'" 
+                    :class="[
+                      'sort-icon',
+                      'bi',
+                      sorting.direction === 'asc' ? 'bi-arrow-up' : 'bi-arrow-down'
+                    ]">
+                  </i>
+                </th>
+                <th @click="sortBy('year')" class="sortable">
+                  Năm
+                  <i v-if="sorting.field === 'year'" 
+                    :class="[
+                      'sort-icon',
+                      'bi',
+                      sorting.direction === 'asc' ? 'bi-arrow-up' : 'bi-arrow-down'
+                    ]">
+                  </i>
+                </th>
+                <th @click="sortBy('month')" class="sortable">
+                  Tháng
+                  <i v-if="sorting.field === 'month'" 
+                    :class="[
+                      'sort-icon',
+                      'bi',
+                      sorting.direction === 'asc' ? 'bi-arrow-up' : 'bi-arrow-down'
+                    ]">
+                  </i>
+                </th>
+                <th @click="sortBy('amount')" class="sortable text-right">
+                  Số tiền
+                  <i v-if="sorting.field === 'amount'" 
+                    :class="[
+                      'sort-icon',
+                      'bi',
+                      sorting.direction === 'asc' ? 'bi-arrow-up' : 'bi-arrow-down'
+                    ]">
+                  </i>
+                </th>
+                <th class="action-column">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="budget in budgetsList" :key="budget.id">
+                <td>{{ budget.id }}</td>
+                <td class="font-medium">{{ budget.categoryName }}</td>
+                <td>{{ budget.year }}</td>
+                <td>{{ months.find(m => m.id === budget.month)?.name }}</td>
+                <td class="text-right font-medium">{{ formatNumber(budget.amount) }} ₫</td>
+                <td>
+                  <div class="action-buttons">
+                    <button @click="openBudgetDetailsModal(budget)" class="btn-icon view-btn" title="Xem chi tiết">
+                      <i class="bi bi-eye"></i>
+                    </button>
+                    <button v-if="isAdmin" @click="openEditBudgetModal(budget)" class="btn-icon edit-btn" title="Chỉnh sửa">
+                      <i class="bi bi-pencil"></i>
+                    </button>
+                    <button v-if="isAdmin" @click="openDeleteBudgetModal(budget)" class="btn-icon delete-btn" title="Xóa">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        
+        <!-- Pagination -->
+        <div v-if="!isLoading && budgetsList.length > 0" class="pagination-container">
+          <div class="pagination-info">
+            Hiển thị {{ pagination.totalItems === 0 ? 0 : pagination.currentPage * pagination.pageSize + 1 }} đến 
+            {{ Math.min((pagination.currentPage + 1) * pagination.pageSize, pagination.totalItems) }} 
+            trên tổng số {{ pagination.totalItems }} ngân sách
+          </div>
+          
+          <div class="pagination-controls">
+            <button 
+              @click="goToPage(0)"
+              class="pagination-btn"
+              :disabled="pagination.currentPage === 0">
+              <i class="bi bi-chevron-double-left"></i>
+            </button>
+            
+            <button 
+              @click="goToPage(pagination.currentPage - 1)"
+              class="pagination-btn"
+              :disabled="pagination.currentPage === 0">
+              <i class="bi bi-chevron-left"></i>
+            </button>
+            
+            <span class="pagination-text">
+              {{ pagination.currentPage + 1 }} / {{ pagination.totalPages }}
+            </span>
+            
+            <button 
+              @click="goToPage(pagination.currentPage + 1)"
+              class="pagination-btn"
+              :disabled="pagination.currentPage >= pagination.totalPages - 1">
+              <i class="bi bi-chevron-right"></i>
+            </button>
+            
+            <button 
+              @click="goToPage(pagination.totalPages - 1)"
+              class="pagination-btn"
+              :disabled="pagination.currentPage >= pagination.totalPages - 1">
+              <i class="bi bi-chevron-double-right"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Create Budget Modal -->
+    <div v-if="showCreateBudgetModal" class="modal-overlay">
+      <div class="modal-container">
+        <div class="modal-header">
+          <h3 class="modal-title">Thêm ngân sách thu nhập</h3>
+          <button @click="showCreateBudgetModal = false" class="btn-close">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label required">Danh mục</label>
+            <select v-model="budgetForm.categoryId" class="form-select" :class="{ error: errors.categoryId }">
+              <option value="">Chọn danh mục</option>
+              <option v-for="category in categories" :key="category.id" :value="category.id">{{ category.name }}</option>
+            </select>
+            <div v-if="errors.categoryId" class="form-error">
+              <i class="bi bi-exclamation-circle"></i>
+              {{ errors.categoryId }}
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label required">Năm</label>
+            <select v-model="budgetForm.year" class="form-select" :class="{ error: errors.year }">
+              <option value="">Chọn năm</option>
+              <option v-for="year in years" :key="year" :value="year">{{ year }}</option>
+            </select>
+            <div v-if="errors.year" class="form-error">
+              <i class="bi bi-exclamation-circle"></i>
+              {{ errors.year }}
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label required">Tháng</label>
+            <select v-model="budgetForm.month" class="form-select" :class="{ error: errors.month }">
+              <option value="">Chọn tháng</option>
+              <option v-for="month in months" :key="month.id" :value="month.id">{{ month.name }}</option>
+            </select>
+            <div v-if="errors.month" class="form-error">
+              <i class="bi bi-exclamation-circle"></i>
+              {{ errors.month }}
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label required">Số tiền</label>
+            <input 
+              type="text" 
+              v-model="budgetForm.amount" 
+              class="form-input" 
+              :class="{ error: errors.amount }"
+              placeholder="Nhập số tiền"
+            />
+            <div v-if="errors.amount" class="form-error">
+              <i class="bi bi-exclamation-circle"></i>
+              {{ errors.amount }}
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Ghi chú</label>
+            <textarea 
+              v-model="budgetForm.notes" 
+              class="form-textarea" 
+              rows="3"
+              placeholder="Nhập ghi chú (không bắt buộc)"
+            ></textarea>
+          </div>
+          
+          <div class="modal-actions">
+            <button @click="showCreateBudgetModal = false" class="btn-secondary">Hủy</button>
+            <button @click="saveBudget" class="btn-primary">Lưu</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Edit Budget Modal -->
+    <div v-if="showEditBudgetModal" class="modal-overlay">
+      <div class="modal-container">
+        <div class="modal-header">
+          <h3 class="modal-title">Chỉnh sửa ngân sách thu nhập</h3>
+          <button @click="showEditBudgetModal = false" class="btn-close">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label required">Danh mục</label>
+            <select v-model="budgetForm.categoryId" class="form-select" :class="{ error: errors.categoryId }">
+              <option value="">Chọn danh mục</option>
+              <option v-for="category in categories" :key="category.id" :value="category.id">{{ category.name }}</option>
+            </select>
+            <div v-if="errors.categoryId" class="form-error">
+              <i class="bi bi-exclamation-circle"></i>
+              {{ errors.categoryId }}
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label required">Năm</label>
+            <select v-model="budgetForm.year" class="form-select" :class="{ error: errors.year }">
+              <option value="">Chọn năm</option>
+              <option v-for="year in years" :key="year" :value="year">{{ year }}</option>
+            </select>
+            <div v-if="errors.year" class="form-error">
+              <i class="bi bi-exclamation-circle"></i>
+              {{ errors.year }}
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label required">Tháng</label>
+            <select v-model="budgetForm.month" class="form-select" :class="{ error: errors.month }">
+              <option value="">Chọn tháng</option>
+              <option v-for="month in months" :key="month.id" :value="month.id">{{ month.name }}</option>
+            </select>
+            <div v-if="errors.month" class="form-error">
+              <i class="bi bi-exclamation-circle"></i>
+              {{ errors.month }}
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label required">Số tiền</label>
+            <input 
+              type="text" 
+              v-model="budgetForm.amount" 
+              class="form-input" 
+              :class="{ error: errors.amount }"
+              placeholder="Nhập số tiền"
+            />
+            <div v-if="errors.amount" class="form-error">
+              <i class="bi bi-exclamation-circle"></i>
+              {{ errors.amount }}
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Ghi chú</label>
+            <textarea 
+              v-model="budgetForm.notes" 
+              class="form-textarea" 
+              rows="3"
+              placeholder="Nhập ghi chú (không bắt buộc)"
+            ></textarea>
+          </div>
+          
+          <div class="modal-actions">
+            <button @click="showEditBudgetModal = false" class="btn-secondary">Hủy</button>
+            <button @click="saveBudget" class="btn-primary">Lưu</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Delete Budget Modal -->
+    <div v-if="showDeleteBudgetModal" class="modal-overlay">
+      <div class="modal-container modal-confirm">
+        <div class="modal-header">
+          <h3 class="modal-title">Xác nhận xóa</h3>
+          <button @click="showDeleteBudgetModal = false" class="btn-close">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="icon-warning">
+            <i class="bi bi-exclamation-triangle"></i>
+          </div>
+          <h4 class="confirm-title">Xóa ngân sách thu nhập?</h4>
+          <p class="confirm-message">
+            Bạn có chắc chắn muốn xóa ngân sách thu nhập này không? Hành động này không thể hoàn tác.
+            Sau khi xóa, ngân sách sẽ được tự động tính lại dựa trên thu nhập thực tế.
+          </p>
+          
+          <div class="modal-actions">
+            <button @click="showDeleteBudgetModal = false" class="btn-secondary">Hủy</button>
+            <button @click="deleteBudget" class="btn-danger">Xóa</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Budget Details Modal -->
+    <div v-if="showBudgetDetailsModal" class="modal-overlay">
+      <div class="modal-container">
+        <div class="modal-header">
+          <h3 class="modal-title">Chi tiết ngân sách</h3>
+          <button @click="showBudgetDetailsModal = false" class="btn-close">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="budget-avatar">
+            <i class="bi bi-cash-stack"></i>
+          </div>
+          
+          <h4 class="budget-amount text-center">{{ formatNumber(currentBudget.amount) }} ₫</h4>
+          <p class="budget-period text-center">{{ months.find(m => m.id === currentBudget.month)?.name }} - {{ currentBudget.year }}</p>
+          
+          <div class="form-group">
+            <label class="form-label">Danh mục</label>
+            <div class="detail-value">{{ currentBudget.categoryName }}</div>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Ghi chú</label>
+            <div class="detail-value">{{ currentBudget.notes || 'Không có ghi chú' }}</div>
+          </div>
+          
+          <div class="modal-actions">
+            <button @click="showBudgetDetailsModal = false" class="btn-secondary">Đóng</button>
+            <button v-if="isAdmin" @click="() => { showBudgetDetailsModal = false; openEditBudgetModal(currentBudget); }" class="btn-primary">
+              <i class="bi bi-pencil"></i> Chỉnh sửa
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Toast Notification -->
+    <div 
+      v-if="notification.show"
+      :class="['toast-notification', notification.type]"
+    >
+      <i :class="[
+        notification.type === 'success' ? 'bi bi-check-circle-fill' : 'bi bi-exclamation-circle-fill'
+      ]"></i>
+      <span>{{ notification.message }}</span>
     </div>
   </AppLayout>
 </template>
 
 <style scoped>
-.content-box {
-  background-color: white;
-  padding: 2rem;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+
+.budget-avatar {
+  background-color: #e0e7ff;
+  width: 4rem;
+  height: 4rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1rem;
 }
 
-.content-box h2 {
-  color: #111827;
-  margin-top: 0;
+.budget-avatar i {
+  font-size: 2rem;
+  color: #4f46e5;
+}
+
+.budget-amount {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #4f46e5;
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+
+.budget-period {
+  font-size: 1rem;
+  color: #6b7280;
+  text-align: center;
   margin-bottom: 1rem;
 }
 
-.content-box p {
-  color: #6b7280;
-  line-height: 1.5;
+.detail-value {
+  font-size: 1rem;
+  color: #111827;
 }
 
-.placeholder-content {
-  margin-top: 2rem;
-  padding: 2rem;
-  background-color: #f9fafb;
-  border: 1px dashed #d1d5db;
-  border-radius: 6px;
-  text-align: center;
-}
-</style> 
+</style>

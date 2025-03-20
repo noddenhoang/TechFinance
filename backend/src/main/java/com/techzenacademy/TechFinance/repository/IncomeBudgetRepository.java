@@ -30,4 +30,6 @@ public interface IncomeBudgetRepository extends JpaRepository<IncomeBudget, Inte
 
     @Query("SELECT SUM(b.amount) FROM IncomeBudget b WHERE b.year = :year AND b.month = :month")
     Optional<BigDecimal> sumAmountByYearAndMonth(@Param("year") Integer year, @Param("month") Integer month);
+
+    Page<IncomeBudget> findByCategoryIdAndYear(Integer categoryId, Integer year, Pageable pageable);
 }

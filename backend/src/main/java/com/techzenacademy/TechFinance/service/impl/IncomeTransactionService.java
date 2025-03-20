@@ -12,7 +12,9 @@ import com.techzenacademy.TechFinance.repository.CustomerRepository;
 import com.techzenacademy.TechFinance.repository.IncomeCategoryRepository;
 import com.techzenacademy.TechFinance.repository.IncomeTransactionRepository;
 import com.techzenacademy.TechFinance.repository.UserRepository;
+import com.techzenacademy.TechFinance.service.impl.IncomeBudgetService;
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -41,6 +43,9 @@ public class IncomeTransactionService {
     
     @Autowired
     private UserRepository userRepository;
+    
+    @Autowired
+    private IncomeBudgetService incomeBudgetService;
     
     /**
      * Lấy giao dịch theo ID với phân trang (chỉ trả về 1 kết quả hoặc không có kết quả)
@@ -142,30 +147,57 @@ public class IncomeTransactionService {
                 .collect(Collectors.toList());
     }
     
+    @Transactional
     public IncomeTransactionDTO createTransaction(IncomeTransactionRequest request) {
         IncomeTransaction transaction = new IncomeTransaction();
         updateTransactionFromRequest(transaction, request);
         transaction.setCreatedBy(getCurrentUser());
         
         IncomeTransaction savedTransaction = transactionRepository.save(transaction);
+        
+        incomeBudgetService.refreshBudgets(
+            transaction.getTransactionDate().getYear(),
+            transaction.getTransactionDate().getMonthValue()
+        );
+        
         return mapToDTO(savedTransaction);
     }
     
+    @Transactional
     public IncomeTransactionDTO updateTransaction(Integer id, IncomeTransactionRequest request) {
         IncomeTransaction transaction = transactionRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Income transaction not found with id: " + id));
         
-        updateTransactionFromRequest(transaction, request);
+        int oldYear = transaction.getTransactionDate().getYear();
+        int oldMonth = transaction.getTransactionDate().getMonthValue();
         
+        updateTransactionFromRequest(transaction, request);
         IncomeTransaction updatedTransaction = transactionRepository.save(transaction);
+        
+        incomeBudgetService.refreshBudgets(oldYear, oldMonth);
+        
+        if (oldYear != updatedTransaction.getTransactionDate().getYear() || 
+            oldMonth != updatedTransaction.getTransactionDate().getMonthValue()) {
+            incomeBudgetService.refreshBudgets(
+                updatedTransaction.getTransactionDate().getYear(), 
+                updatedTransaction.getTransactionDate().getMonthValue()
+            );
+        }
+        
         return mapToDTO(updatedTransaction);
     }
     
+    @Transactional
     public void deleteTransaction(Integer id) {
-        if (!transactionRepository.existsById(id)) {
-            throw new EntityNotFoundException("Income transaction not found with id: " + id);
-        }
+        IncomeTransaction transaction = transactionRepository.findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Income transaction not found with id: " + id));
+        
+        int year = transaction.getTransactionDate().getYear();
+        int month = transaction.getTransactionDate().getMonthValue();
+        
         transactionRepository.deleteById(id);
+        
+        incomeBudgetService.refreshBudgets(year, month);
     }
     
     private void updateTransactionFromRequest(IncomeTransaction transaction, IncomeTransactionRequest request) {

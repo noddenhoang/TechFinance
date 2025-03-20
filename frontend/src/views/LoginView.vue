@@ -115,13 +115,6 @@ const useTestAccount = (type) => {
       <h1 class="login-title">TechFinance</h1>
       <h2 class="login-subtitle">Hệ thống Quản lý Thu chi</h2>
       
-      <div class="server-status-top">
-        <span :class="getStatusColor()">{{ getStatusText() }}</span>
-        <button @click="authStore.checkApiStatus()" class="refresh-button">
-          Kiểm tra lại
-        </button>
-      </div>
-      
       <div v-if="errorMessage" class="error-message">
         {{ errorMessage }}
       </div>
