@@ -886,4 +886,155 @@
 .action-column {
   width: 120px;
   text-align: center;
-} 
+}
+
+/* Content layout with details panel */
+.content-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+/* Layout when details are shown - UPDATED */
+.content-layout.with-details {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+/* For larger screens, use two-column layout - UPDATED RATIO */
+@media (min-width: 1024px) {
+  .content-layout.with-details {
+    grid-template-columns: 3fr 2fr; /* Thay đổi từ 2fr 3fr thành 3fr 2fr (main list chiếm 60%, detail chiếm 40%) */
+    align-items: start;
+  }
+}
+
+/* Main list panel styles */
+.card.customers-list,
+.card.suppliers-list {
+  transition: all 0.3s ease;
+  width: 100%;
+}
+
+/* Detail panel styles - UPDATED */
+.card.customer-details,
+.card.supplier-details {
+  transition: all 0.3s ease;
+  animation: slide-in-right 0.3s ease-out forwards;
+  height: max-content;
+  position: sticky;
+  top: 20px;
+  max-width: 100%; /* Đảm bảo responsive trên mobile */
+}
+
+/* Chi tiết cụ thể hơn cho viewport lớn */
+@media (min-width: 1024px) {
+  .card.customer-details,
+  .card.supplier-details {
+    width: 100%;
+    max-width: 400px; /* Giới hạn chiều rộng tối đa */
+  }
+}
+
+/* Details content styling */
+.customer-details-content,
+.supplier-details-content {
+  padding: 1.25rem; /* Giảm padding từ 1.5rem xuống 1.25rem */
+}
+
+.detail-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.customer-avatar,
+.supplier-avatar {
+  width: 4rem; /* Giảm từ 5rem */
+  height: 4rem; /* Giảm từ 5rem */
+  background-color: #e0e7ff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.75rem; /* Giảm từ 1rem */
+}
+
+.customer-avatar i,
+.supplier-avatar i {
+  font-size: 2rem; /* Giảm từ 2.5rem */
+}
+
+.customer-full-name,
+.supplier-full-name {
+  font-size: 1.125rem; /* Giảm từ 1.25rem */
+  font-weight: 600;
+  color: #1e293b;
+  text-align: center;
+}
+
+.detail-section {
+  margin-bottom: 1.25rem; /* Giảm từ 1.5rem */
+  padding-bottom: 1.25rem; /* Giảm từ 1.5rem */
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.detail-section:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.detail-section-title {
+  font-size: 0.875rem; /* Giảm từ 0.938rem */
+  font-weight: 600;
+  color: #4b5563;
+  margin-bottom: 0.75rem; /* Giảm từ 1rem */
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.detail-row {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0.5rem; /* Giảm từ 0.75rem */
+}
+
+@media (min-width: 768px) {
+  .detail-row {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+}
+
+.detail-label {
+  font-size: 0.875rem;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 7rem; /* Giảm từ 8rem */
+  margin-bottom: 0.25rem;
+}
+
+@media (min-width: 768px) {
+  .detail-label {
+    margin-bottom: 0;
+  }
+}
+
+.detail-label i {
+  color: #4f46e5;
+}
+
+.detail-value {
+  font-size: 0.938rem;
+  color: #1e293b;
+  flex: 1;
+  word-break: break-word;
+}

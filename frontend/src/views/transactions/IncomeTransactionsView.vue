@@ -586,7 +586,7 @@ function getCustomerTooltip(customer) {
       </div>
       
       <!-- Filter Form -->
-      <div class="filter-container" :class="{ 'minimized': showDetails }">
+      <div class="filter-container">
         <div class="filter-header">
           <h3 class="card-title">
             <i class="bi bi-funnel"></i>
@@ -687,274 +687,271 @@ function getCustomerTooltip(customer) {
         </div>
       </div>
       
-      <!-- Transaction List and Details Container -->
-      <div class="content-layout" :class="{ 'with-details': showDetails }">
-        <!-- Transactions List -->
-        <div class="card transactions-list" :class="{ 'minimized': showDetails }">
-          <div class="card-header">
-            <h3 class="card-title">
-              <i class="bi bi-cash-coin"></i>
-              Danh sách giao dịch thu nhập
+      <!-- Transactions List -->
+      <div class="card transactions-list">
+        <div class="card-header">
+          <h3 class="card-title">
+            <i class="bi bi-cash-coin"></i>
+            Danh sách giao dịch thu nhập
+          </h3>
+          <span class="result-count">{{ pagination.totalItems }} giao dịch</span>
+        </div>
+        
+        <div v-if="loading && !showDetails" class="card-empty-state">
+          <div class="loading-spinner"></div>
+          <p>Đang tải dữ liệu...</p>
+        </div>
+        
+        <div v-else-if="error && !showDetails" class="card-empty-state error">
+          <i class="bi bi-exclamation-circle error-icon"></i>
+          <p>{{ error }}</p>
+          <button @click="loadTransactions" class="btn-primary">
+            <i class="bi bi-arrow-repeat"></i>
+            Thử lại
+          </button>
+        </div>
+        
+        <div v-else-if="transactionsList.length === 0 && !showDetails" class="card-empty-state">
+          <i class="bi bi-cash-stack empty-icon"></i>
+          <p>Không tìm thấy giao dịch nào</p>
+          <p class="empty-description">Vui lòng điều chỉnh bộ lọc tìm kiếm hoặc tạo giao dịch mới</p>
+        </div>
+        
+        <div v-else class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th @click="sortBy('transactionDate')" class="sortable-column">
+                  Ngày GD
+                  <i :class="getSortIcon('transactionDate')"></i>
+                </th>
+                <th @click="sortBy('amount')" class="sortable-column">
+                  Số tiền
+                  <i :class="getSortIcon('amount')"></i>
+                </th>
+                <th @click="sortBy('categoryName')" class="sortable-column">
+                  Danh mục
+                  <i :class="getSortIcon('categoryName')"></i>
+                </th>
+                <th>Khách hàng</th>
+                <th>Trạng thái</th>
+                <th class="action-column text-center">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr 
+                v-for="transaction in transactionsList" 
+                :key="transaction.id" 
+                @click="showTransactionDetails(transaction)"
+                class="transaction-row"
+                :class="{ 'active': selectedTransaction && selectedTransaction.id === transaction.id }"
+              >
+                <td>{{ formatDate(transaction.transactionDate) }}</td>
+                <td class="amount-cell">{{ formatAmountDisplay(transaction.amount) }}</td>
+                <td>{{ transaction.categoryName }}</td>
+                <td>
+                  <div class="customer-info">
+                    {{ transaction.customerName || 'Không có' }}
+                    <div v-if="transaction.customerId" class="customer-tooltip">
+                      <div class="tooltip-customer-name">{{ transaction.customerName }}</div>
+                      <div v-if="getCustomerDetails(transaction.customerId)?.phone">
+                        <i class="bi bi-telephone"></i> {{ getCustomerDetails(transaction.customerId)?.phone }}
+                      </div>
+                      <div v-if="getCustomerDetails(transaction.customerId)?.email">
+                        <i class="bi bi-envelope"></i> {{ getCustomerDetails(transaction.customerId)?.email }}
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <span :class="['status-badge', transaction.paymentStatus === 'RECEIVED' ? 'active' : 'pending']">
+                    <i :class="[transaction.paymentStatus === 'RECEIVED' ? 'bi bi-check-circle' : 'bi bi-hourglass-split']"></i>
+                    {{ formatPaymentStatus(transaction.paymentStatus) }}
+                  </span>
+                </td>
+                <td class="action-column text-center">
+                  <div class="action-buttons">
+                    <button 
+                      @click.stop="showTransactionDetails(transaction)"
+                      class="btn-icon view-btn"
+                      title="Xem chi tiết"
+                    >
+                      <i class="bi bi-eye"></i>
+                    </button>
+                    <button 
+                      @click.stop="openEditModal(transaction)"
+                      class="btn-icon edit-btn"
+                      title="Chỉnh sửa"
+                    >
+                      <i class="bi bi-pencil-square"></i>
+                    </button>
+                    <button 
+                      @click.stop="openDeleteModal(transaction)"
+                      class="btn-icon delete-btn"
+                      title="Xóa"
+                    >
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Transaction Summary -->
+        <div v-if="transactionsList.length > 0" class="transaction-summary">
+          <div class="summary-item">
+            <span class="summary-label">Tổng số tiền:</span> 
+            <span class="summary-value">{{ formatAmountDisplay(totalAmount) }}</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">Đã nhận:</span>
+            <span class="summary-value received">{{ formatAmountDisplay(receivedAmount) }}</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">Chờ thanh toán:</span>
+            <span class="summary-value pending">{{ formatAmountDisplay(pendingAmount) }}</span>
+          </div>
+        </div>
+
+        <!-- Pagination Controls -->
+        <div v-if="transactionsList.length > 0" class="pagination-container">
+          <div class="pagination-info">
+            Hiển thị {{ transactionsList.length }} trên tổng số {{ pagination.totalItems }} giao dịch
+          </div>
+          
+          <div class="pagination-controls">
+            <button 
+              @click.prevent="goToPage(0)" 
+              :disabled="pagination.currentPage === 0"
+              class="pagination-btn"
+              title="Trang đầu"
+            >
+              <i class="bi bi-chevron-double-left"></i>
+            </button>
+            
+            <button 
+              @click.prevent="goToPage(pagination.currentPage - 1)" 
+              :disabled="pagination.currentPage === 0"
+              class="pagination-btn"
+              title="Trang trước"
+            >
+              <i class="bi bi-chevron-left"></i>
+            </button>
+            
+            <span class="pagination-text">
+              Trang {{ pagination.currentPage + 1 }} / {{ pagination.totalPages }}
+            </span>
+            
+            <button 
+              @click.prevent="goToPage(pagination.currentPage + 1)" 
+              :disabled="pagination.currentPage === pagination.totalPages - 1 || pagination.totalPages === 0"
+              class="pagination-btn"
+              title="Trang sau"
+            >
+              <i class="bi bi-chevron-right"></i>
+            </button>
+            
+            <button 
+              @click.prevent="goToPage(pagination.totalPages - 1)" 
+              :disabled="pagination.currentPage === pagination.totalPages - 1 || pagination.totalPages === 0"
+              class="pagination-btn"
+              title="Trang cuối"
+            >
+              <i class="bi bi-chevron-double-right"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Transaction Details Modal -->
+      <div v-if="showDetails" class="modal-overlay">
+        <div class="modal-container">
+          <div class="modal-header">
+            <h3 class="modal-title">
+              <i class="bi bi-info-circle"></i>
+              Chi tiết giao dịch
             </h3>
-            <span class="result-count">{{ pagination.totalItems }} giao dịch</span>
-          </div>
-          
-          <div v-if="loading && !showDetails" class="card-empty-state">
-            <div class="loading-spinner"></div>
-            <p>Đang tải dữ liệu...</p>
-          </div>
-          
-          <div v-else-if="error && !showDetails" class="card-empty-state error">
-            <i class="bi bi-exclamation-circle error-icon"></i>
-            <p>{{ error }}</p>
-            <button @click="loadTransactions" class="btn-primary">
-              <i class="bi bi-arrow-repeat"></i>
-              Thử lại
+            <button @click="closeDetails" class="btn-close" title="Đóng chi tiết">
+              <i class="bi bi-x-lg"></i>
             </button>
           </div>
           
-          <div v-else-if="transactionsList.length === 0 && !showDetails" class="card-empty-state">
-            <i class="bi bi-cash-stack empty-icon"></i>
-            <p>Không tìm thấy giao dịch nào</p>
-            <p class="empty-description">Vui lòng điều chỉnh bộ lọc tìm kiếm hoặc tạo giao dịch mới</p>
-          </div>
-          
-          <div v-else class="table-responsive">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th @click="sortBy('transactionDate')" class="sortable-column">
-                    Ngày GD
-                    <i :class="getSortIcon('transactionDate')"></i>
-                  </th>
-                  <th @click="sortBy('amount')" class="sortable-column">
-                    Số tiền
-                    <i :class="getSortIcon('amount')"></i>
-                  </th>
-                  <th @click="sortBy('categoryName')" class="sortable-column">
-                    Danh mục
-                    <i :class="getSortIcon('categoryName')"></i>
-                  </th>
-                  <th>Khách hàng</th>
-                  <th>Trạng thái</th>
-                  <th class="action-column text-center">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr 
-                  v-for="transaction in transactionsList" 
-                  :key="transaction.id" 
-                  @click="showTransactionDetails(transaction)"
-                  class="transaction-row"
-                  :class="{ 'active': selectedTransaction && selectedTransaction.id === transaction.id }"
-                >
-                  <td>{{ formatDate(transaction.transactionDate) }}</td>
-                  <td class="amount-cell">{{ formatAmountDisplay(transaction.amount) }}</td>
-                  <td>{{ transaction.categoryName }}</td>
-                  <td>
-                    <div class="customer-info">
-                      {{ transaction.customerName || 'Không có' }}
-                      <div v-if="transaction.customerId" class="customer-tooltip">
-                        <div class="tooltip-customer-name">{{ transaction.customerName }}</div>
-                        <div v-if="getCustomerDetails(transaction.customerId)?.phone">
-                          <i class="bi bi-telephone"></i> {{ getCustomerDetails(transaction.customerId)?.phone }}
-                        </div>
-                        <div v-if="getCustomerDetails(transaction.customerId)?.email">
-                          <i class="bi bi-envelope"></i> {{ getCustomerDetails(transaction.customerId)?.email }}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td>
-                    <span :class="['status-badge', transaction.paymentStatus === 'RECEIVED' ? 'active' : 'pending']">
-                      <i :class="[transaction.paymentStatus === 'RECEIVED' ? 'bi bi-check-circle' : 'bi bi-hourglass-split']"></i>
-                      {{ formatPaymentStatus(transaction.paymentStatus) }}
-                    </span>
-                  </td>
-                  <td class="action-column text-center">
-                    <div class="action-buttons">
-                      <button 
-                        @click.stop="showTransactionDetails(transaction)"
-                        class="btn-icon view-btn"
-                        title="Xem chi tiết"
-                      >
-                        <i class="bi bi-eye"></i>
-                      </button>
-                      <button 
-                        @click.stop="openEditModal(transaction)"
-                        class="btn-icon edit-btn"
-                        title="Chỉnh sửa"
-                      >
-                        <i class="bi bi-pencil-square"></i>
-                      </button>
-                      <button 
-                        @click.stop="openDeleteModal(transaction)"
-                        class="btn-icon delete-btn"
-                        title="Xóa"
-                      >
-                        <i class="bi bi-trash"></i>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          
-          <!-- Pagination Controls -->
-          <div v-if="transactionsList.length > 0" class="pagination-container">
-            <div class="pagination-info">
-              Hiển thị {{ transactionsList.length }} trên tổng số {{ pagination.totalItems }} giao dịch
-            </div>
-            
-            <div class="pagination-controls">
-              <button 
-                @click.prevent="goToPage(0)" 
-                :disabled="pagination.currentPage === 0"
-                class="pagination-btn"
-                title="Trang đầu"
-              >
-                <i class="bi bi-chevron-double-left"></i>
-              </button>
-              
-              <button 
-                @click.prevent="goToPage(pagination.currentPage - 1)" 
-                :disabled="pagination.currentPage === 0"
-                class="pagination-btn"
-                title="Trang trước"
-              >
-                <i class="bi bi-chevron-left"></i>
-              </button>
-              
-              <span class="pagination-text">
-                Trang {{ pagination.currentPage + 1 }} / {{ pagination.totalPages }}
-              </span>
-              
-              <button 
-                @click.prevent="goToPage(pagination.currentPage + 1)" 
-                :disabled="pagination.currentPage === pagination.totalPages - 1 || pagination.totalPages === 0"
-                class="pagination-btn"
-                title="Trang sau"
-              >
-                <i class="bi bi-chevron-right"></i>
-              </button>
-              
-              <button 
-                @click.prevent="goToPage(pagination.totalPages - 1)" 
-                :disabled="pagination.currentPage === pagination.totalPages - 1 || pagination.totalPages === 0"
-                class="pagination-btn"
-                title="Trang cuối"
-              >
-                <i class="bi bi-chevron-double-right"></i>
-              </button>
+          <div v-if="loading" class="modal-body">
+            <div class="card-empty-state">
+              <div class="loading-spinner"></div>
+              <p>Đang tải thông tin chi tiết...</p>
             </div>
           </div>
           
-          <!-- Transaction Summary -->
-          <div v-if="transactionsList.length > 0" class="transaction-summary">
-            <div class="summary-item">
-              <span class="summary-label">Tổng số tiền:</span> 
-              <span class="summary-value">{{ formatAmountDisplay(totalAmount) }}</span>
+          <div v-else-if="selectedTransaction" class="modal-body">
+            <div class="detail-header">
+              <div class="transaction-avatar">
+                <i class="bi bi-cash-coin"></i>
+              </div>
+              <h3 class="transaction-amount">{{ formatAmountDisplay(selectedTransaction.amount) }}</h3>
+              <p class="transaction-date">{{ formatDate(selectedTransaction.transactionDate) }}</p>
             </div>
-            <div class="summary-item">
-              <span class="summary-label">Đã nhận:</span>
-              <span class="summary-value received">{{ formatAmountDisplay(receivedAmount) }}</span>
+            
+            <div class="detail-section">
+              <h4 class="detail-section-title">Thông tin giao dịch</h4>
+              
+              <div class="detail-row">
+                <div class="detail-label">
+                  <i class="bi bi-tag"></i>
+                  Danh mục:
+                </div>
+                <div class="detail-value">{{ selectedTransaction.categoryName }}</div>
+              </div>
+              
+              <div class="detail-row">
+                <div class="detail-label">
+                  <i class="bi bi-person"></i>
+                  Khách hàng:
+                </div>
+                <div class="detail-value">{{ selectedTransaction.customerName || 'Không có' }}</div>
+              </div>
+              
+              <div class="detail-row">
+                <div class="detail-label">
+                  <i class="bi bi-calendar-check"></i>
+                  Trạng thái:
+                </div>
+                <div class="detail-value">
+                  <span :class="['status-badge', selectedTransaction.paymentStatus === 'RECEIVED' ? 'active' : 'pending']">
+                    <i :class="[selectedTransaction.paymentStatus === 'RECEIVED' ? 'bi bi-check-circle' : 'bi bi-hourglass-split']"></i>
+                    {{ formatPaymentStatus(selectedTransaction.paymentStatus) }}
+                  </span>
+                </div>
+              </div>
+              
+              <div class="detail-row">
+                <div class="detail-label">
+                  <i class="bi bi-hash"></i>
+                  Số tham chiếu:
+                </div>
+                <div class="detail-value">{{ selectedTransaction.referenceNo || 'Không có' }}</div>
+              </div>
+              
+              <div class="detail-row">
+                <div class="detail-label">
+                  <i class="bi bi-card-text"></i>
+                  Mô tả:
+                </div>
+                <div class="detail-value description-value">{{ selectedTransaction.description || 'Không có mô tả' }}</div>
+              </div>
             </div>
-            <div class="summary-item">
-              <span class="summary-label">Chờ thanh toán:</span>
-              <span class="summary-value pending">{{ formatAmountDisplay(pendingAmount) }}</span>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Transaction Details Modal -->
-        <div v-if="showDetails" class="modal-overlay">
-          <div class="modal-container">
-            <div class="modal-header">
-              <h3 class="modal-title">
-                <i class="bi bi-info-circle"></i>
-                Chi tiết giao dịch
-              </h3>
-              <button @click="closeDetails" class="btn-close" title="Đóng chi tiết">
-                <i class="bi bi-x-lg"></i>
+            
+            <div v-if="isAdmin && selectedTransaction" class="modal-actions">
+              <button @click="openEditModal(selectedTransaction)" class="btn-primary">
+                <i class="bi bi-pencil-square"></i>
+                Sửa
               </button>
-            </div>
-            
-            <div v-if="loading" class="modal-body">
-              <div class="card-empty-state">
-                <div class="loading-spinner"></div>
-                <p>Đang tải thông tin chi tiết...</p>
-              </div>
-            </div>
-            
-            <div v-else-if="selectedTransaction" class="modal-body">
-              <div class="detail-header">
-                <div class="transaction-avatar">
-                  <i class="bi bi-cash-coin"></i>
-                </div>
-                <h3 class="transaction-amount">{{ formatAmountDisplay(selectedTransaction.amount) }}</h3>
-                <p class="transaction-date">{{ formatDate(selectedTransaction.transactionDate) }}</p>
-              </div>
-              
-              <div class="detail-section">
-                <h4 class="detail-section-title">Thông tin giao dịch</h4>
-                
-                <div class="detail-row">
-                  <div class="detail-label">
-                    <i class="bi bi-tag"></i>
-                    Danh mục:
-                  </div>
-                  <div class="detail-value">{{ selectedTransaction.categoryName }}</div>
-                </div>
-                
-                <div class="detail-row">
-                  <div class="detail-label">
-                    <i class="bi bi-person"></i>
-                    Khách hàng:
-                  </div>
-                  <div class="detail-value">{{ selectedTransaction.customerName || 'Không có' }}</div>
-                </div>
-                
-                <div class="detail-row">
-                  <div class="detail-label">
-                    <i class="bi bi-calendar-check"></i>
-                    Trạng thái:
-                  </div>
-                  <div class="detail-value">
-                    <span :class="['status-badge', selectedTransaction.paymentStatus === 'RECEIVED' ? 'active' : 'pending']">
-                      <i :class="[selectedTransaction.paymentStatus === 'RECEIVED' ? 'bi bi-check-circle' : 'bi bi-hourglass-split']"></i>
-                      {{ formatPaymentStatus(selectedTransaction.paymentStatus) }}
-                    </span>
-                  </div>
-                </div>
-                
-                <div class="detail-row">
-                  <div class="detail-label">
-                    <i class="bi bi-hash"></i>
-                    Số tham chiếu:
-                  </div>
-                  <div class="detail-value">{{ selectedTransaction.referenceNo || 'Không có' }}</div>
-                </div>
-                
-                <div class="detail-row">
-                  <div class="detail-label">
-                    <i class="bi bi-card-text"></i>
-                    Mô tả:
-                  </div>
-                  <div class="detail-value description-value">{{ selectedTransaction.description || 'Không có mô tả' }}</div>
-                </div>
-              </div>
-              
-              <div v-if="isAdmin && selectedTransaction" class="modal-actions">
-                <button @click="openEditModal(selectedTransaction)" class="btn-primary">
-                  <i class="bi bi-pencil-square"></i>
-                  Sửa
-                </button>
-                <button @click="openDeleteModal(selectedTransaction)" class="btn-danger">
-                  <i class="bi bi-trash"></i>
-                  Xóa
-                </button>
-              </div>
+              <button @click="openDeleteModal(selectedTransaction)" class="btn-danger">
+                <i class="bi bi-trash"></i>
+                Xóa
+              </button>
             </div>
           </div>
         </div>
@@ -1323,4 +1320,99 @@ function getCustomerTooltip(customer) {
   font-size: 0.875rem;
   color: #6366f1;
 }
+
+/* Transaction Summary styles */
+.transaction-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #e5e7eb;
+  background-color: #f8fafc;
+  border-radius: 0 0 0.5rem 0.5rem;
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  min-width: 150px;
+}
+
+.summary-label {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin-bottom: 0.25rem;
+}
+
+.summary-value {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.summary-value.received {
+  color: #10b981; /* Màu xanh lá - giống với paid trong expense */
+}
+
+.summary-value.pending {
+  color: #f59e0b; /* Màu cam - giống với pending trong expense */
+}
+
+@media (max-width: 768px) {
+  .transaction-summary {
+    flex-direction: column;
+    gap: 1rem;
+  }
+}
+
+/* Layout Grid for Transactions List and Details */
+.content-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+/* Layout with details panel */
+.content-layout.with-details {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+/* For tablets and above */
+@media (min-width: 768px) {
+  .content-layout.with-details {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* For desktops */
+@media (min-width: 1024px) {
+  .content-layout.with-details {
+    grid-template-columns: 3fr 2fr;
+    align-items: start;
+  }
+}
+
+/* Transaction details card */
+.card.transaction-details {
+  height: max-content;
+  position: sticky;
+  top: 20px;
+  animation: slide-in-right 0.3s ease-out forwards;
+}
+
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Các CSS khác giữ nguyên... */
 </style>

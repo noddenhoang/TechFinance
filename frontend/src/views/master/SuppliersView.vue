@@ -848,9 +848,9 @@ function sortBy(field) {
     </div>
     
     <!-- Notification -->
-    <div v-if="notification.show" :class="['notification', notification.type]">
-      <i :class="['notification-icon', notification.type === 'success' ? 'bi bi-check-circle' : 'bi bi-exclamation-circle']"></i>
-      <span class="notification-message">{{ notification.message }}</span>
+    <div v-if="notification.show" :class="['toast-notification', notification.type]">
+      <i :class="notification.type === 'success' ? 'bi bi-check-circle' : 'bi bi-exclamation-circle'"></i>
+      <span>{{ notification.message }}</span>
     </div>
   </AppLayout>
 </template>
