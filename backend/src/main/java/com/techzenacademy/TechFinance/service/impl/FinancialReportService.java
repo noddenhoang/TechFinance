@@ -52,31 +52,30 @@ public class FinancialReportService {
         LocalDate startDate = LocalDate.of(year, month, 1);
         LocalDate endDate = YearMonth.of(year, month).atEndOfMonth();
         
-        // 1. Tính tổng thu nhập theo ngân sách
-        List<IncomeBudget> incomeBudgets = incomeBudgetRepository.findByYearAndMonth(year, month);
-        BigDecimal totalIncomeBudget = incomeBudgets.stream()
-                .map(IncomeBudget::getAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        
-        // 2. Tính tổng chi tiêu theo ngân sách
-        List<ExpenseBudget> expenseBudgets = expenseBudgetRepository.findByYearAndMonth(year, month);
-        BigDecimal totalExpenseBudget = expenseBudgets.stream()
-                .map(ExpenseBudget::getAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        
-        // 3. Tính thu nhập thực tế (chỉ tính đã thanh toán)
+        // Lấy tất cả giao dịch trong khoảng thời gian
         List<IncomeTransaction> incomeTransactions = incomeTransactionRepository
                 .findByTransactionDateBetweenOrderByTransactionDateDesc(startDate, endDate);
         
+        List<ExpenseTransaction> expenseTransactions = expenseTransactionRepository
+                .findByTransactionDateBetweenOrderByTransactionDateDesc(startDate, endDate);
+        
+        // 1. Tính kế hoạch thu nhập (tất cả giao dịch)
+        BigDecimal totalIncomeBudget = incomeTransactions.stream()
+                .map(IncomeTransaction::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        
+        // 2. Tính kế hoạch chi tiêu (tất cả giao dịch)
+        BigDecimal totalExpenseBudget = expenseTransactions.stream()
+                .map(ExpenseTransaction::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        
+        // 3. Tính thu nhập thực tế (chỉ tính đã thanh toán)
         BigDecimal totalIncomeActual = incomeTransactions.stream()
                 .filter(t -> t.getPaymentStatus() == IncomeTransaction.PaymentStatus.RECEIVED)
                 .map(IncomeTransaction::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         
         // 4. Tính chi tiêu thực tế (chỉ tính đã thanh toán)
-        List<ExpenseTransaction> expenseTransactions = expenseTransactionRepository
-                .findByTransactionDateBetweenOrderByTransactionDateDesc(startDate, endDate);
-        
         BigDecimal totalExpenseActual = expenseTransactions.stream()
                 .filter(t -> t.getPaymentStatus() == ExpenseTransaction.PaymentStatus.PAID)
                 .map(ExpenseTransaction::getAmount)
@@ -91,10 +90,10 @@ public class FinancialReportService {
         report.setSummary(summary);
         
         // 6. Chi tiết theo danh mục thu nhập
-        report.setIncomeCategories(generateIncomeCategoryComparisons(incomeBudgets, incomeTransactions, totalIncomeActual));
+        report.setIncomeCategories(generateIncomeCategoryComparisons(incomeTransactions));
         
         // 7. Chi tiết theo danh mục chi tiêu
-        report.setExpenseCategories(generateExpenseCategoryComparisons(expenseBudgets, expenseTransactions, totalExpenseActual));
+        report.setExpenseCategories(generateExpenseCategoryComparisons(expenseTransactions));
         
         return report;
     }
@@ -102,71 +101,47 @@ public class FinancialReportService {
     /**
      * Tạo danh sách so sánh theo danh mục thu nhập
      */
-    private List<CategoryComparisonDTO> generateIncomeCategoryComparisons(
-            List<IncomeBudget> budgets, 
-            List<IncomeTransaction> transactions,
-            BigDecimal totalActual) {
-        
-        // Tạo map để tính tổng thực tế theo danh mục
+    private List<CategoryComparisonDTO> generateIncomeCategoryComparisons(List<IncomeTransaction> transactions) {
+        // Tạo map để tính tổng theo danh mục (kế hoạch - tất cả giao dịch)
+        Map<Integer, BigDecimal> budgetByCategory = new HashMap<>();
+        // Tạo map để tính tổng thực tế theo danh mục (chỉ giao dịch đã thanh toán)
         Map<Integer, BigDecimal> actualByCategory = new HashMap<>();
         Map<Integer, String> categoryNames = new HashMap<>();
         
+        // Tính toán kế hoạch (tất cả giao dịch)
         for (IncomeTransaction transaction : transactions) {
+            Integer categoryId = transaction.getCategory().getId();
+            categoryNames.put(categoryId, transaction.getCategory().getName());
+            
+            BigDecimal currentAmount = budgetByCategory.getOrDefault(categoryId, BigDecimal.ZERO);
+            budgetByCategory.put(categoryId, currentAmount.add(transaction.getAmount()));
+            
+            // Nếu đã thanh toán, cập nhật cả thực tế
             if (transaction.getPaymentStatus() == IncomeTransaction.PaymentStatus.RECEIVED) {
-                Integer categoryId = transaction.getCategory().getId();
-                categoryNames.put(categoryId, transaction.getCategory().getName());
-                
-                BigDecimal currentAmount = actualByCategory.getOrDefault(categoryId, BigDecimal.ZERO);
-                actualByCategory.put(categoryId, currentAmount.add(transaction.getAmount()));
+                BigDecimal currentActual = actualByCategory.getOrDefault(categoryId, BigDecimal.ZERO);
+                actualByCategory.put(categoryId, currentActual.add(transaction.getAmount()));
             }
         }
+        
+        // Tính tổng thực tế để tính phần trăm
+        BigDecimal totalActual = actualByCategory.values().stream()
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
         
         // Tạo danh sách so sánh
         List<CategoryComparisonDTO> comparisons = new ArrayList<>();
         
-        // Thêm các danh mục có trong ngân sách
-        for (IncomeBudget budget : budgets) {
-            Integer categoryId = budget.getCategory().getId();
-            
+        // Thêm các danh mục
+        for (Integer categoryId : budgetByCategory.keySet()) {
             CategoryComparisonDTO comparison = new CategoryComparisonDTO();
             comparison.setCategoryId(categoryId);
-            comparison.setCategoryName(budget.getCategory().getName());
-            comparison.setBudgetAmount(budget.getAmount());
+            comparison.setCategoryName(categoryNames.get(categoryId));
+            comparison.setBudgetAmount(budgetByCategory.get(categoryId));
             comparison.setActualAmount(actualByCategory.getOrDefault(categoryId, BigDecimal.ZERO));
             comparison.setDifference(comparison.getActualAmount().subtract(comparison.getBudgetAmount()));
             
             // Tính % của tổng thực tế
             if (totalActual.compareTo(BigDecimal.ZERO) > 0) {
                 double percentage = comparison.getActualAmount()
-                        .multiply(BigDecimal.valueOf(100))
-                        .divide(totalActual, 2, RoundingMode.HALF_UP)
-                        .doubleValue();
-                comparison.setPercentageOfTotal(percentage);
-            } else {
-                comparison.setPercentageOfTotal(0.0);
-            }
-            
-            comparisons.add(comparison);
-            
-            // Xóa khỏi map để theo dõi những gì đã được xử lý
-            actualByCategory.remove(categoryId);
-        }
-        
-        // Thêm các danh mục có giao dịch thực tế nhưng không có trong ngân sách
-        for (Map.Entry<Integer, BigDecimal> entry : actualByCategory.entrySet()) {
-            Integer categoryId = entry.getKey();
-            BigDecimal amount = entry.getValue();
-            
-            CategoryComparisonDTO comparison = new CategoryComparisonDTO();
-            comparison.setCategoryId(categoryId);
-            comparison.setCategoryName(categoryNames.get(categoryId));
-            comparison.setBudgetAmount(BigDecimal.ZERO);
-            comparison.setActualAmount(amount);
-            comparison.setDifference(amount);
-            
-            // Tính % của tổng thực tế
-            if (totalActual.compareTo(BigDecimal.ZERO) > 0) {
-                double percentage = amount
                         .multiply(BigDecimal.valueOf(100))
                         .divide(totalActual, 2, RoundingMode.HALF_UP)
                         .doubleValue();
@@ -187,40 +162,44 @@ public class FinancialReportService {
     /**
      * Tạo danh sách so sánh theo danh mục chi tiêu
      */
-    private List<CategoryComparisonDTO> generateExpenseCategoryComparisons(
-            List<ExpenseBudget> budgets, 
-            List<ExpenseTransaction> transactions,
-            BigDecimal totalActual) {
-        
-        // Tạo map để tính tổng thực tế theo danh mục
+    private List<CategoryComparisonDTO> generateExpenseCategoryComparisons(List<ExpenseTransaction> transactions) {
+        // Tương tự như phương thức trên, nhưng cho chi tiêu
+        // Tạo map để tính tổng theo danh mục (kế hoạch - tất cả giao dịch)
+        Map<Integer, BigDecimal> budgetByCategory = new HashMap<>();
+        // Tạo map để tính tổng thực tế theo danh mục (chỉ giao dịch đã thanh toán)
         Map<Integer, BigDecimal> actualByCategory = new HashMap<>();
         Map<Integer, String> categoryNames = new HashMap<>();
         
+        // Tính toán kế hoạch (tất cả giao dịch)
         for (ExpenseTransaction transaction : transactions) {
+            Integer categoryId = transaction.getCategory().getId();
+            categoryNames.put(categoryId, transaction.getCategory().getName());
+            
+            BigDecimal currentAmount = budgetByCategory.getOrDefault(categoryId, BigDecimal.ZERO);
+            budgetByCategory.put(categoryId, currentAmount.add(transaction.getAmount()));
+            
+            // Nếu đã thanh toán, cập nhật cả thực tế
             if (transaction.getPaymentStatus() == ExpenseTransaction.PaymentStatus.PAID) {
-                Integer categoryId = transaction.getCategory().getId();
-                categoryNames.put(categoryId, transaction.getCategory().getName());
-                
-                BigDecimal currentAmount = actualByCategory.getOrDefault(categoryId, BigDecimal.ZERO);
-                actualByCategory.put(categoryId, currentAmount.add(transaction.getAmount()));
+                BigDecimal currentActual = actualByCategory.getOrDefault(categoryId, BigDecimal.ZERO);
+                actualByCategory.put(categoryId, currentActual.add(transaction.getAmount()));
             }
         }
         
-        // Tạo danh sách so sánh
+        // Tính tổng thực tế để tính phần trăm
+        BigDecimal totalActual = actualByCategory.values().stream()
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        
         List<CategoryComparisonDTO> comparisons = new ArrayList<>();
         
-        // Thêm các danh mục có trong ngân sách
-        for (ExpenseBudget budget : budgets) {
-            Integer categoryId = budget.getCategory().getId();
-            
+        // Thêm các danh mục
+        for (Integer categoryId : budgetByCategory.keySet()) {
             CategoryComparisonDTO comparison = new CategoryComparisonDTO();
             comparison.setCategoryId(categoryId);
-            comparison.setCategoryName(budget.getCategory().getName());
-            comparison.setBudgetAmount(budget.getAmount());
+            comparison.setCategoryName(categoryNames.get(categoryId));
+            comparison.setBudgetAmount(budgetByCategory.get(categoryId));
             comparison.setActualAmount(actualByCategory.getOrDefault(categoryId, BigDecimal.ZERO));
             comparison.setDifference(comparison.getActualAmount().subtract(comparison.getBudgetAmount()));
             
-            // Tính % của tổng thực tế
             if (totalActual.compareTo(BigDecimal.ZERO) > 0) {
                 double percentage = comparison.getActualAmount()
                         .multiply(BigDecimal.valueOf(100))
@@ -232,38 +211,8 @@ public class FinancialReportService {
             }
             
             comparisons.add(comparison);
-            
-            // Xóa khỏi map để theo dõi những gì đã được xử lý
-            actualByCategory.remove(categoryId);
         }
         
-        // Thêm các danh mục có giao dịch thực tế nhưng không có trong ngân sách
-        for (Map.Entry<Integer, BigDecimal> entry : actualByCategory.entrySet()) {
-            Integer categoryId = entry.getKey();
-            BigDecimal amount = entry.getValue();
-            
-            CategoryComparisonDTO comparison = new CategoryComparisonDTO();
-            comparison.setCategoryId(categoryId);
-            comparison.setCategoryName(categoryNames.get(categoryId));
-            comparison.setBudgetAmount(BigDecimal.ZERO);
-            comparison.setActualAmount(amount);
-            comparison.setDifference(amount);
-            
-            // Tính % của tổng thực tế
-            if (totalActual.compareTo(BigDecimal.ZERO) > 0) {
-                double percentage = amount
-                        .multiply(BigDecimal.valueOf(100))
-                        .divide(totalActual, 2, RoundingMode.HALF_UP)
-                        .doubleValue();
-                comparison.setPercentageOfTotal(percentage);
-            } else {
-                comparison.setPercentageOfTotal(0.0);
-            }
-            
-            comparisons.add(comparison);
-        }
-        
-        // Sắp xếp theo số tiền thực tế giảm dần
         comparisons.sort((a, b) -> b.getActualAmount().compareTo(a.getActualAmount()));
         
         return comparisons;
