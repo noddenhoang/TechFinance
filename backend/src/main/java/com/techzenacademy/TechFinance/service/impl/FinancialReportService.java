@@ -1,406 +1,271 @@
-// package com.techzenacademy.TechFinance.service.impl;
+package com.techzenacademy.TechFinance.service.impl;
 
-// import com.fasterxml.jackson.databind.ObjectMapper;
-// import com.techzenacademy.TechFinance.dto.CategoryBreakdownDTO;
-// import com.techzenacademy.TechFinance.dto.CategoryComparisonDTO;
-// import com.techzenacademy.TechFinance.dto.CategoryReportDTO;
-// import com.techzenacademy.TechFinance.dto.MonthlyFinancialReportDTO;
-// import com.techzenacademy.TechFinance.dto.PeriodComparisonReportDTO;
-// import com.techzenacademy.TechFinance.entity.FinancialReport;
-// import com.techzenacademy.TechFinance.entity.IncomeTransaction;
-// import com.techzenacademy.TechFinance.entity.ExpenseTransaction;
-// import com.techzenacademy.TechFinance.repository.ExpenseBudgetRepository;
-// import com.techzenacademy.TechFinance.repository.ExpenseTransactionRepository;
-// import com.techzenacademy.TechFinance.repository.FinancialReportRepository;
-// import com.techzenacademy.TechFinance.repository.IncomeBudgetRepository;
-// import com.techzenacademy.TechFinance.repository.IncomeTransactionRepository;
-// import jakarta.persistence.EntityNotFoundException;
-// import org.springframework.beans.factory.annotation.Autowired;
-// import org.springframework.stereotype.Service;
+import com.techzenacademy.TechFinance.dto.report.MonthlyReportDTO;
+import com.techzenacademy.TechFinance.dto.report.MonthlyReportDTO.*;
+import com.techzenacademy.TechFinance.entity.ExpenseBudget;
+import com.techzenacademy.TechFinance.entity.ExpenseTransaction;
+import com.techzenacademy.TechFinance.entity.IncomeBudget;
+import com.techzenacademy.TechFinance.entity.IncomeTransaction;
+import com.techzenacademy.TechFinance.repository.ExpenseBudgetRepository;
+import com.techzenacademy.TechFinance.repository.ExpenseTransactionRepository;
+import com.techzenacademy.TechFinance.repository.IncomeBudgetRepository;
+import com.techzenacademy.TechFinance.repository.IncomeTransactionRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
-// import java.math.BigDecimal;
-// import java.math.RoundingMode;
-// import java.time.LocalDate;
-// import java.time.YearMonth;
-// import java.util.ArrayList;
-// import java.util.Comparator;
-// import java.util.HashMap;
-// import java.util.List;
-// import java.util.Map;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.YearMonth;
+import java.util.*;
+import java.util.stream.Collectors;
 
-// @Service
-// public class FinancialReportService {
+@Service
+public class FinancialReportService {
     
-//     @Autowired
-//     private FinancialReportRepository reportRepository;
+    @Autowired
+    private IncomeBudgetRepository incomeBudgetRepository;
     
-//     @Autowired
-//     private IncomeTransactionRepository incomeRepository;
+    @Autowired
+    private ExpenseBudgetRepository expenseBudgetRepository;
     
-//     @Autowired
-//     private ExpenseTransactionRepository expenseRepository;
+    @Autowired
+    private IncomeTransactionRepository incomeTransactionRepository;
     
-//     @Autowired
-//     private IncomeBudgetRepository incomeBudgetRepository;
+    @Autowired
+    private ExpenseTransactionRepository expenseTransactionRepository;
     
-//     @Autowired
-//     private ExpenseBudgetRepository expenseBudgetRepository;
+    /**
+     * Tạo báo cáo tài chính tháng
+     */
+    public MonthlyReportDTO generateMonthlyReport(Integer year, Integer month) {
+        // Validation
+        if (year < 2000 || month < 1 || month > 12) {
+            throw new IllegalArgumentException("Invalid year or month");
+        }
+        
+        MonthlyReportDTO report = new MonthlyReportDTO();
+        report.setYear(year);
+        report.setMonth(month);
+        
+        // Tính toán khoảng thời gian
+        LocalDate startDate = LocalDate.of(year, month, 1);
+        LocalDate endDate = YearMonth.of(year, month).atEndOfMonth();
+        
+        // 1. Tính tổng thu nhập theo ngân sách
+        List<IncomeBudget> incomeBudgets = incomeBudgetRepository.findByYearAndMonth(year, month);
+        BigDecimal totalIncomeBudget = incomeBudgets.stream()
+                .map(IncomeBudget::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        
+        // 2. Tính tổng chi tiêu theo ngân sách
+        List<ExpenseBudget> expenseBudgets = expenseBudgetRepository.findByYearAndMonth(year, month);
+        BigDecimal totalExpenseBudget = expenseBudgets.stream()
+                .map(ExpenseBudget::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        
+        // 3. Tính thu nhập thực tế (chỉ tính đã thanh toán)
+        List<IncomeTransaction> incomeTransactions = incomeTransactionRepository
+                .findByTransactionDateBetweenOrderByTransactionDateDesc(startDate, endDate);
+        
+        BigDecimal totalIncomeActual = incomeTransactions.stream()
+                .filter(t -> t.getPaymentStatus() == IncomeTransaction.PaymentStatus.RECEIVED)
+                .map(IncomeTransaction::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        
+        // 4. Tính chi tiêu thực tế (chỉ tính đã thanh toán)
+        List<ExpenseTransaction> expenseTransactions = expenseTransactionRepository
+                .findByTransactionDateBetweenOrderByTransactionDateDesc(startDate, endDate);
+        
+        BigDecimal totalExpenseActual = expenseTransactions.stream()
+                .filter(t -> t.getPaymentStatus() == ExpenseTransaction.PaymentStatus.PAID)
+                .map(ExpenseTransaction::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        
+        // 5. Tạo summary
+        ReportSummaryDTO summary = new ReportSummaryDTO();
+        summary.setTotalIncomeBudget(totalIncomeBudget);
+        summary.setTotalIncomeActual(totalIncomeActual);
+        summary.setTotalExpenseBudget(totalExpenseBudget);
+        summary.setTotalExpenseActual(totalExpenseActual);
+        report.setSummary(summary);
+        
+        // 6. Chi tiết theo danh mục thu nhập
+        report.setIncomeCategories(generateIncomeCategoryComparisons(incomeBudgets, incomeTransactions, totalIncomeActual));
+        
+        // 7. Chi tiết theo danh mục chi tiêu
+        report.setExpenseCategories(generateExpenseCategoryComparisons(expenseBudgets, expenseTransactions, totalExpenseActual));
+        
+        return report;
+    }
     
-//     @Autowired
-//     private ObjectMapper objectMapper;
-    
-//     public MonthlyFinancialReportDTO getMonthlyReport(Integer year, Integer month) {
-//         MonthlyFinancialReportDTO report = new MonthlyFinancialReportDTO();
-//         report.setYear(year);
-//         report.setMonth(month);
+    /**
+     * Tạo danh sách so sánh theo danh mục thu nhập
+     */
+    private List<CategoryComparisonDTO> generateIncomeCategoryComparisons(
+            List<IncomeBudget> budgets, 
+            List<IncomeTransaction> transactions,
+            BigDecimal totalActual) {
         
-//         // Validate year and month
-//         if (year < 2000 || month < 1 || month > 12) {
-//             throw new IllegalArgumentException("Invalid year or month");
-//         }
+        // Tạo map để tính tổng thực tế theo danh mục
+        Map<Integer, BigDecimal> actualByCategory = new HashMap<>();
+        Map<Integer, String> categoryNames = new HashMap<>();
         
-//         // Calculate start and end dates of the month
-//         LocalDate startDate = LocalDate.of(year, month, 1);
-//         LocalDate endDate = YearMonth.of(year, month).atEndOfMonth();
-        
-//         // Get income transactions for the month
-//         List<IncomeTransaction> incomeTransactions = 
-//                 incomeRepository.findByTransactionDateBetweenOrderByTransactionDateDesc(startDate, endDate);
-        
-//         // Get expense transactions for the month
-//         List<ExpenseTransaction> expenseTransactions = 
-//                 expenseRepository.findByTransactionDateBetweenOrderByTransactionDateDesc(startDate, endDate);
-        
-//         // Calculate income statistics
-//         BigDecimal totalIncome = BigDecimal.ZERO;
-//         BigDecimal receivedIncome = BigDecimal.ZERO;
-//         BigDecimal pendingIncome = BigDecimal.ZERO;
-        
-//         for (IncomeTransaction transaction : incomeTransactions) {
-//             totalIncome = totalIncome.add(transaction.getAmount());
-//             if (transaction.getPaymentStatus() == IncomeTransaction.PaymentStatus.RECEIVED) {
-//                 receivedIncome = receivedIncome.add(transaction.getAmount());
-//             } else {
-//                 pendingIncome = pendingIncome.add(transaction.getAmount());
-//             }
-//         }
-        
-//         // Calculate expense statistics
-//         BigDecimal totalExpense = BigDecimal.ZERO;
-//         BigDecimal paidExpense = BigDecimal.ZERO;
-//         BigDecimal pendingExpense = BigDecimal.ZERO;
-        
-//         for (ExpenseTransaction transaction : expenseTransactions) {
-//             totalExpense = totalExpense.add(transaction.getAmount());
-//             if (transaction.getPaymentStatus() == ExpenseTransaction.PaymentStatus.PAID) {
-//                 paidExpense = paidExpense.add(transaction.getAmount());
-//             } else {
-//                 pendingExpense = pendingExpense.add(transaction.getAmount());
-//             }
-//         }
-        
-//         // Calculate profit/loss
-//         BigDecimal profitLoss = totalIncome.subtract(totalExpense);
-        
-//         // Get budget information
-//         BigDecimal incomeBudget = getIncomeBudgetTotal(year, month);
-//         BigDecimal expenseBudget = getExpenseBudgetTotal(year, month);
-//         BigDecimal budgetVariance = (totalIncome.subtract(incomeBudget))
-//                 .subtract(totalExpense.subtract(expenseBudget));
-        
-//         // Set calculated values to report
-//         report.setTotalIncome(totalIncome);
-//         report.setReceivedIncome(receivedIncome);
-//         report.setPendingIncome(pendingIncome);
-//         report.setTotalExpense(totalExpense);
-//         report.setPaidExpense(paidExpense);
-//         report.setPendingExpense(pendingExpense);
-//         report.setProfitLoss(profitLoss);
-//         report.setIncomeBudget(incomeBudget);
-//         report.setExpenseBudget(expenseBudget);
-//         report.setBudgetVariance(budgetVariance);
-        
-//         // Get category breakdown
-//         CategoryReportDTO categoryReport = getCategoryBreakdown(year, month);
-//         Map<String, Object> categoryBreakdown = new HashMap<>();
-//         categoryBreakdown.put("income", categoryReport.getIncomeCategories());
-//         categoryBreakdown.put("expense", categoryReport.getExpenseCategories());
-//         report.setCategoryBreakdown(categoryBreakdown);
-        
-//         return report;
-//     }
-    
-//     public List<MonthlyFinancialReportDTO> getYearlyReports(Integer year) {
-//         // Validate year
-//         if (year < 2000) {
-//             throw new IllegalArgumentException("Invalid year");
-//         }
-        
-//         List<MonthlyFinancialReportDTO> yearlyReports = new ArrayList<>();
-//         for (int month = 1; month <= 12; month++) {
-//             try {
-//                 MonthlyFinancialReportDTO monthReport = getMonthlyReport(year, month);
-//                 yearlyReports.add(monthReport);
-//             } catch (Exception e) {
-//                 // If there's no data for a month, add an empty report
-//                 MonthlyFinancialReportDTO emptyReport = new MonthlyFinancialReportDTO();
-//                 emptyReport.setYear(year);
-//                 emptyReport.setMonth(month);
-//                 emptyReport.setTotalIncome(BigDecimal.ZERO);
-//                 emptyReport.setTotalExpense(BigDecimal.ZERO);
-//                 emptyReport.setProfitLoss(BigDecimal.ZERO);
-//                 yearlyReports.add(emptyReport);
-//             }
-//         }
-        
-//         return yearlyReports;
-//     }
-    
-//     public CategoryReportDTO getCategoryBreakdown(Integer year, Integer month) {
-//         CategoryReportDTO report = new CategoryReportDTO();
-        
-//         // Get income by category
-//         List<Object[]> incomeByCategory = reportRepository.getIncomeByCategory(year, month);
-//         List<CategoryBreakdownDTO> incomeCategories = new ArrayList<>();
-        
-//         for (Object[] row : incomeByCategory) {
-//             CategoryBreakdownDTO category = new CategoryBreakdownDTO();
-//             category.setCategoryName((String) row[1]);  // category_name
-//             category.setAmount(new BigDecimal(row[2].toString())); // total_amount
-//             category.setPercentage(new BigDecimal(row[3].toString())); // percentage
-//             incomeCategories.add(category);
-//         }
-        
-//         report.setIncomeCategories(incomeCategories);
-        
-//         // Get expense by category
-//         List<Object[]> expenseByCategory = reportRepository.getExpenseByCategory(year, month);
-//         List<CategoryBreakdownDTO> expenseCategories = new ArrayList<>();
-        
-//         for (Object[] row : expenseByCategory) {
-//             CategoryBreakdownDTO category = new CategoryBreakdownDTO();
-//             category.setCategoryName((String) row[1]);  // category_name
-//             category.setAmount(new BigDecimal(row[2].toString())); // total_amount
-//             category.setPercentage(new BigDecimal(row[3].toString())); // percentage
-//             expenseCategories.add(category);
-//         }
-        
-//         report.setExpenseCategories(expenseCategories);
-        
-//         return report;
-//     }
-    
-//     private BigDecimal getIncomeBudgetTotal(Integer year, Integer month) {
-//         try {
-//             return incomeBudgetRepository.sumAmountByYearAndMonth(year, month)
-//                     .orElse(BigDecimal.ZERO);
-//         } catch (Exception e) {
-//             return BigDecimal.ZERO;
-//         }
-//     }
-    
-//     private BigDecimal getExpenseBudgetTotal(Integer year, Integer month) {
-//         try {
-//             return expenseBudgetRepository.sumAmountByYearAndMonth(year, month)
-//                     .orElse(BigDecimal.ZERO);
-//         } catch (Exception e) {
-//             return BigDecimal.ZERO;
-//         }
-//     }
-    
-//     public PeriodComparisonReportDTO comparePeriods(Integer currentYear, Integer currentMonth, 
-//                                               Integer previousYear, Integer previousMonth) {
-//         // Validate inputs
-//         if (currentYear < 2000 || currentMonth < 1 || currentMonth > 12 ||
-//             previousYear < 2000 || previousMonth < 1 || previousMonth > 12) {
-//             throw new IllegalArgumentException("Invalid year or month");
-//         }
-        
-//         PeriodComparisonReportDTO report = new PeriodComparisonReportDTO();
-//         report.setCurrentYear(currentYear);
-//         report.setCurrentMonth(currentMonth);
-//         report.setPreviousYear(previousYear);
-//         report.setPreviousMonth(previousMonth);
-        
-//         // Get category breakdowns for both periods
-//         CategoryReportDTO currentPeriod = getCategoryBreakdown(currentYear, currentMonth);
-//         CategoryReportDTO previousPeriod = getCategoryBreakdown(previousYear, previousMonth);
-        
-//         // Calculate totals from the current period
-//         BigDecimal currentTotalIncome = calculateTotalFromCategories(currentPeriod.getIncomeCategories());
-//         BigDecimal currentTotalExpense = calculateTotalFromCategories(currentPeriod.getExpenseCategories());
-        
-//         // Calculate totals from the previous period
-//         BigDecimal previousTotalIncome = calculateTotalFromCategories(previousPeriod.getIncomeCategories());
-//         BigDecimal previousTotalExpense = calculateTotalFromCategories(previousPeriod.getExpenseCategories());
-        
-//         // Set total values
-//         report.setCurrentTotalIncome(currentTotalIncome);
-//         report.setPreviousTotalIncome(previousTotalIncome);
-//         report.setCurrentTotalExpense(currentTotalExpense);
-//         report.setPreviousTotalExpense(previousTotalExpense);
-        
-//         // Calculate differences and percentage changes
-//         report.setIncomeDifference(currentTotalIncome.subtract(previousTotalIncome));
-//         report.setExpenseDifference(currentTotalExpense.subtract(previousTotalExpense));
-        
-//         if (previousTotalIncome.compareTo(BigDecimal.ZERO) != 0) {
-//             BigDecimal incomeChange = report.getIncomeDifference()
-//                 .divide(previousTotalIncome, 4, RoundingMode.HALF_UP)
-//                 .multiply(new BigDecimal("100"));
-//             report.setIncomePercentageChange(incomeChange);
-//         } else if (currentTotalIncome.compareTo(BigDecimal.ZERO) > 0) {
-//             report.setIncomePercentageChange(new BigDecimal("100")); // 100% increase from zero
-//         } else {
-//             report.setIncomePercentageChange(BigDecimal.ZERO);
-//         }
-        
-//         if (previousTotalExpense.compareTo(BigDecimal.ZERO) != 0) {
-//             BigDecimal expenseChange = report.getExpenseDifference()
-//                 .divide(previousTotalExpense, 4, RoundingMode.HALF_UP)
-//                 .multiply(new BigDecimal("100"));
-//             report.setExpensePercentageChange(expenseChange);
-//         } else if (currentTotalExpense.compareTo(BigDecimal.ZERO) > 0) {
-//             report.setExpensePercentageChange(new BigDecimal("100")); // 100% increase from zero
-//         } else {
-//             report.setExpensePercentageChange(BigDecimal.ZERO);
-//         }
-        
-//         // Compare income categories
-//         List<CategoryComparisonDTO> incomeComparisons = 
-//             compareCategories(currentPeriod.getIncomeCategories(), previousPeriod.getIncomeCategories(),
-//                             currentTotalIncome, previousTotalIncome);
-//         report.setIncomeCategories(incomeComparisons);
-        
-//         // Compare expense categories
-//         List<CategoryComparisonDTO> expenseComparisons = 
-//             compareCategories(currentPeriod.getExpenseCategories(), previousPeriod.getExpenseCategories(),
-//                             currentTotalExpense, previousTotalExpense);
-//         report.setExpenseCategories(expenseComparisons);
-        
-//         return report;
-//     }
-    
-//     private BigDecimal calculateTotalFromCategories(List<CategoryBreakdownDTO> categories) {
-//         BigDecimal total = BigDecimal.ZERO;
-//         for (CategoryBreakdownDTO category : categories) {
-//             total = total.add(category.getAmount());
-//         }
-//         return total;
-//     }
-    
-//     private List<CategoryComparisonDTO> compareCategories(List<CategoryBreakdownDTO> currentCategories, 
-//                                                          List<CategoryBreakdownDTO> previousCategories,
-//                                                          BigDecimal currentTotal,
-//                                                          BigDecimal previousTotal) {
-//         Map<String, CategoryBreakdownDTO> previousCategoryMap = new HashMap<>();
-//         for (CategoryBreakdownDTO category : previousCategories) {
-//             previousCategoryMap.put(category.getCategoryName(), category);
-//         }
-        
-//         List<CategoryComparisonDTO> comparisons = new ArrayList<>();
-        
-//         // Process all current categories
-//         for (CategoryBreakdownDTO currentCategory : currentCategories) {
-//             CategoryComparisonDTO comparison = new CategoryComparisonDTO();
-//             comparison.setCategoryName(currentCategory.getCategoryName());
-//             comparison.setCurrentPeriodAmount(currentCategory.getAmount());
-//             comparison.setCurrentPeriodPercentage(currentCategory.getPercentage());
-            
-//             // Find matching category in previous period
-//             CategoryBreakdownDTO previousCategory = previousCategoryMap.get(currentCategory.getCategoryName());
-//             if (previousCategory != null) {
-//                 comparison.setPreviousPeriodAmount(previousCategory.getAmount());
-//                 comparison.setPreviousPeriodPercentage(previousCategory.getPercentage());
-//                 comparison.setDifference(currentCategory.getAmount().subtract(previousCategory.getAmount()));
+        for (IncomeTransaction transaction : transactions) {
+            if (transaction.getPaymentStatus() == IncomeTransaction.PaymentStatus.RECEIVED) {
+                Integer categoryId = transaction.getCategory().getId();
+                categoryNames.put(categoryId, transaction.getCategory().getName());
                 
-//                 if (previousCategory.getAmount().compareTo(BigDecimal.ZERO) != 0) {
-//                     BigDecimal percentageChange = comparison.getDifference()
-//                         .divide(previousCategory.getAmount(), 4, RoundingMode.HALF_UP)
-//                         .multiply(new BigDecimal("100"));
-//                     comparison.setPercentageChange(percentageChange);
-//                 } else if (currentCategory.getAmount().compareTo(BigDecimal.ZERO) > 0) {
-//                     comparison.setPercentageChange(new BigDecimal("100")); // 100% increase from zero
-//                 } else {
-//                     comparison.setPercentageChange(BigDecimal.ZERO);
-//                 }
-                
-//                 // Remove from map to track processed categories
-//                 previousCategoryMap.remove(currentCategory.getCategoryName());
-//             } else {
-//                 // Category did not exist in previous period
-//                 comparison.setPreviousPeriodAmount(BigDecimal.ZERO);
-//                 comparison.setPreviousPeriodPercentage(BigDecimal.ZERO);
-//                 comparison.setDifference(currentCategory.getAmount());
-//                 // New category means 100% increase if amount > 0
-//                 if (currentCategory.getAmount().compareTo(BigDecimal.ZERO) > 0) {
-//                     comparison.setPercentageChange(new BigDecimal("100"));
-//                 } else {
-//                     comparison.setPercentageChange(BigDecimal.ZERO);
-//                 }
-//             }
+                BigDecimal currentAmount = actualByCategory.getOrDefault(categoryId, BigDecimal.ZERO);
+                actualByCategory.put(categoryId, currentAmount.add(transaction.getAmount()));
+            }
+        }
+        
+        // Tạo danh sách so sánh
+        List<CategoryComparisonDTO> comparisons = new ArrayList<>();
+        
+        // Thêm các danh mục có trong ngân sách
+        for (IncomeBudget budget : budgets) {
+            Integer categoryId = budget.getCategory().getId();
             
-//             comparisons.add(comparison);
-//         }
-        
-//         // Add remaining previous categories (those that don't exist in current period)
-//         for (Map.Entry<String, CategoryBreakdownDTO> entry : previousCategoryMap.entrySet()) {
-//             CategoryBreakdownDTO previousCategory = entry.getValue();
-//             CategoryComparisonDTO comparison = new CategoryComparisonDTO();
-//             comparison.setCategoryName(previousCategory.getCategoryName());
-//             comparison.setCurrentPeriodAmount(BigDecimal.ZERO);
-//             comparison.setCurrentPeriodPercentage(BigDecimal.ZERO);
-//             comparison.setPreviousPeriodAmount(previousCategory.getAmount());
-//             comparison.setPreviousPeriodPercentage(previousCategory.getPercentage());
-//             comparison.setDifference(BigDecimal.ZERO.subtract(previousCategory.getAmount()));
-//             comparison.setPercentageChange(new BigDecimal("-100")); // 100% decrease (category removed)
+            CategoryComparisonDTO comparison = new CategoryComparisonDTO();
+            comparison.setCategoryId(categoryId);
+            comparison.setCategoryName(budget.getCategory().getName());
+            comparison.setBudgetAmount(budget.getAmount());
+            comparison.setActualAmount(actualByCategory.getOrDefault(categoryId, BigDecimal.ZERO));
+            comparison.setDifference(comparison.getActualAmount().subtract(comparison.getBudgetAmount()));
             
-//             comparisons.add(comparison);
-//         }
+            // Tính % của tổng thực tế
+            if (totalActual.compareTo(BigDecimal.ZERO) > 0) {
+                double percentage = comparison.getActualAmount()
+                        .multiply(BigDecimal.valueOf(100))
+                        .divide(totalActual, 2, RoundingMode.HALF_UP)
+                        .doubleValue();
+                comparison.setPercentageOfTotal(percentage);
+            } else {
+                comparison.setPercentageOfTotal(0.0);
+            }
+            
+            comparisons.add(comparison);
+            
+            // Xóa khỏi map để theo dõi những gì đã được xử lý
+            actualByCategory.remove(categoryId);
+        }
         
-//         // Sort by current period amount descending
-//         comparisons.sort(Comparator.comparing(CategoryComparisonDTO::getCurrentPeriodAmount).reversed());
+        // Thêm các danh mục có giao dịch thực tế nhưng không có trong ngân sách
+        for (Map.Entry<Integer, BigDecimal> entry : actualByCategory.entrySet()) {
+            Integer categoryId = entry.getKey();
+            BigDecimal amount = entry.getValue();
+            
+            CategoryComparisonDTO comparison = new CategoryComparisonDTO();
+            comparison.setCategoryId(categoryId);
+            comparison.setCategoryName(categoryNames.get(categoryId));
+            comparison.setBudgetAmount(BigDecimal.ZERO);
+            comparison.setActualAmount(amount);
+            comparison.setDifference(amount);
+            
+            // Tính % của tổng thực tế
+            if (totalActual.compareTo(BigDecimal.ZERO) > 0) {
+                double percentage = amount
+                        .multiply(BigDecimal.valueOf(100))
+                        .divide(totalActual, 2, RoundingMode.HALF_UP)
+                        .doubleValue();
+                comparison.setPercentageOfTotal(percentage);
+            } else {
+                comparison.setPercentageOfTotal(0.0);
+            }
+            
+            comparisons.add(comparison);
+        }
         
-//         return comparisons;
-//     }
+        // Sắp xếp theo số tiền thực tế giảm dần
+        comparisons.sort((a, b) -> b.getActualAmount().compareTo(a.getActualAmount()));
+        
+        return comparisons;
+    }
     
-//     public CategoryReportDTO getCategoryBreakdownWithFilters(Integer year, Integer month, 
-//                                                           boolean activeOnly, String sortBy) {
-//         CategoryReportDTO report = getCategoryBreakdown(year, month);
-//         List<CategoryBreakdownDTO> incomeCategories = report.getIncomeCategories();
-//         List<CategoryBreakdownDTO> expenseCategories = report.getExpenseCategories();
+    /**
+     * Tạo danh sách so sánh theo danh mục chi tiêu
+     */
+    private List<CategoryComparisonDTO> generateExpenseCategoryComparisons(
+            List<ExpenseBudget> budgets, 
+            List<ExpenseTransaction> transactions,
+            BigDecimal totalActual) {
         
-//         // Filter out inactive categories if required
-//         if (activeOnly) {
-//             incomeCategories = incomeCategories.stream()
-//                 .filter(cat -> cat.getAmount().compareTo(BigDecimal.ZERO) > 0)
-//                 .toList();
+        // Tạo map để tính tổng thực tế theo danh mục
+        Map<Integer, BigDecimal> actualByCategory = new HashMap<>();
+        Map<Integer, String> categoryNames = new HashMap<>();
+        
+        for (ExpenseTransaction transaction : transactions) {
+            if (transaction.getPaymentStatus() == ExpenseTransaction.PaymentStatus.PAID) {
+                Integer categoryId = transaction.getCategory().getId();
+                categoryNames.put(categoryId, transaction.getCategory().getName());
+                
+                BigDecimal currentAmount = actualByCategory.getOrDefault(categoryId, BigDecimal.ZERO);
+                actualByCategory.put(categoryId, currentAmount.add(transaction.getAmount()));
+            }
+        }
+        
+        // Tạo danh sách so sánh
+        List<CategoryComparisonDTO> comparisons = new ArrayList<>();
+        
+        // Thêm các danh mục có trong ngân sách
+        for (ExpenseBudget budget : budgets) {
+            Integer categoryId = budget.getCategory().getId();
             
-//             expenseCategories = expenseCategories.stream()
-//                 .filter(cat -> cat.getAmount().compareTo(BigDecimal.ZERO) > 0)
-//                 .toList();
-//         }
+            CategoryComparisonDTO comparison = new CategoryComparisonDTO();
+            comparison.setCategoryId(categoryId);
+            comparison.setCategoryName(budget.getCategory().getName());
+            comparison.setBudgetAmount(budget.getAmount());
+            comparison.setActualAmount(actualByCategory.getOrDefault(categoryId, BigDecimal.ZERO));
+            comparison.setDifference(comparison.getActualAmount().subtract(comparison.getBudgetAmount()));
+            
+            // Tính % của tổng thực tế
+            if (totalActual.compareTo(BigDecimal.ZERO) > 0) {
+                double percentage = comparison.getActualAmount()
+                        .multiply(BigDecimal.valueOf(100))
+                        .divide(totalActual, 2, RoundingMode.HALF_UP)
+                        .doubleValue();
+                comparison.setPercentageOfTotal(percentage);
+            } else {
+                comparison.setPercentageOfTotal(0.0);
+            }
+            
+            comparisons.add(comparison);
+            
+            // Xóa khỏi map để theo dõi những gì đã được xử lý
+            actualByCategory.remove(categoryId);
+        }
         
-//         // Sort categories based on requested sort field
-//         Comparator<CategoryBreakdownDTO> comparator;
-//         if (sortBy.equalsIgnoreCase("percentage")) {
-//             comparator = Comparator.comparing(CategoryBreakdownDTO::getPercentage).reversed();
-//         } else if (sortBy.equalsIgnoreCase("name")) {
-//             comparator = Comparator.comparing(CategoryBreakdownDTO::getCategoryName);
-//         } else { // Default to amount
-//             comparator = Comparator.comparing(CategoryBreakdownDTO::getAmount).reversed();
-//         }
+        // Thêm các danh mục có giao dịch thực tế nhưng không có trong ngân sách
+        for (Map.Entry<Integer, BigDecimal> entry : actualByCategory.entrySet()) {
+            Integer categoryId = entry.getKey();
+            BigDecimal amount = entry.getValue();
+            
+            CategoryComparisonDTO comparison = new CategoryComparisonDTO();
+            comparison.setCategoryId(categoryId);
+            comparison.setCategoryName(categoryNames.get(categoryId));
+            comparison.setBudgetAmount(BigDecimal.ZERO);
+            comparison.setActualAmount(amount);
+            comparison.setDifference(amount);
+            
+            // Tính % của tổng thực tế
+            if (totalActual.compareTo(BigDecimal.ZERO) > 0) {
+                double percentage = amount
+                        .multiply(BigDecimal.valueOf(100))
+                        .divide(totalActual, 2, RoundingMode.HALF_UP)
+                        .doubleValue();
+                comparison.setPercentageOfTotal(percentage);
+            } else {
+                comparison.setPercentageOfTotal(0.0);
+            }
+            
+            comparisons.add(comparison);
+        }
         
-//         List<CategoryBreakdownDTO> sortedIncomeCategories = new ArrayList<>(incomeCategories);
-//         sortedIncomeCategories.sort(comparator);
+        // Sắp xếp theo số tiền thực tế giảm dần
+        comparisons.sort((a, b) -> b.getActualAmount().compareTo(a.getActualAmount()));
         
-//         List<CategoryBreakdownDTO> sortedExpenseCategories = new ArrayList<>(expenseCategories);
-//         sortedExpenseCategories.sort(comparator);
-        
-//         CategoryReportDTO filteredReport = new CategoryReportDTO();
-//         filteredReport.setIncomeCategories(sortedIncomeCategories);
-//         filteredReport.setExpenseCategories(sortedExpenseCategories);
-        
-//         return filteredReport;
-//     }
-// }
+        return comparisons;
+    }
+}
