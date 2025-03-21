@@ -111,6 +111,7 @@ public class FinancialReportService {
         // Tạo báo cáo cho mỗi tháng trong quý
         for (int month = startMonth; month <= endMonth; month++) {
             try {
+                // Mỗi báo cáo tháng đã bao gồm đầy đủ chi tiết danh mục
                 MonthlyReportDTO monthlyReport = generateMonthlyReport(year, month);
                 reports.add(monthlyReport);
             } catch (Exception e) {

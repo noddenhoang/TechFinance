@@ -17,6 +17,26 @@ const reportData = ref(null);
 const isLoading = ref(false);
 const error = ref(null);
 
+// Thêm state để kiểm soát hiển thị chi tiết từng tháng
+const showMonthlyDetails = ref(false);
+
+// Thêm phương thức để toggle hiển thị chi tiết
+const toggleMonthlyDetails = () => {
+  showMonthlyDetails.value = !showMonthlyDetails.value;
+};
+
+// Thêm state quản lý hiện tại đang xem tháng nào
+const activeMonths = reactive(new Set());
+
+// Phương thức để toggle hiển thị chi tiết tháng cụ thể
+const toggleMonthDetail = (monthId) => {
+  if (activeMonths.has(monthId)) {
+    activeMonths.delete(monthId);
+  } else {
+    activeMonths.add(monthId);
+  }
+};
+
 // Computed lists
 const months = computed(() => [
   { id: 1, name: 'Tháng 1' },
@@ -426,6 +446,63 @@ onMounted(() => {
               </tfoot>
             </table>
           </div>
+          
+          <!-- Sau bảng tổng kết theo tháng, thêm nút toggle -->
+          <div class="toggle-month-details" v-if="filters.timeFrame !== 'month' && Array.isArray(reportData)">
+            <button @click="toggleMonthlyDetails" class="toggle-details-btn">
+              <i :class="['bi', showMonthlyDetails ? 'bi-chevron-up' : 'bi-chevron-down']"></i>
+              {{ showMonthlyDetails ? 'Ẩn chi tiết từng tháng' : 'Hiển thị chi tiết từng tháng' }}
+            </button>
+          </div>
+          
+          <!-- Cập nhật phần hiển thị chi tiết từng tháng -->
+          <div v-if="filters.timeFrame !== 'month' && Array.isArray(reportData) && showMonthlyDetails" class="monthly-details">
+            <!-- Chi tiết từng tháng như đã thêm trước đó -->
+            <div v-for="(month, monthIndex) in reportData" :key="'month-'+monthIndex" class="month-detail-section">
+              <h4 @click="toggleMonthDetail(month.month)" class="month-title clickable">
+                {{ months.find(m => m.id === month.month)?.name }} {{ month.year }}
+                <span class="month-total">
+                  Tổng: {{ formatCurrency(filters.reportType === 'income' 
+                    ? month.summary.totalIncomeActual 
+                    : month.summary.totalExpenseActual) }}
+                </span>
+                <i :class="['bi', activeMonths.has(month.month) ? 'bi-chevron-up' : 'bi-chevron-down']"></i>
+              </h4>
+              
+              <div v-if="activeMonths.has(month.month)" class="table-container">
+                <!-- Bảng chi tiết danh mục của từng tháng -->
+                <table class="categories-table month-categories-table">
+                  <thead>
+                    <tr>
+                      <th>Danh mục</th>
+                      <th class="text-right">Kế hoạch</th>
+                      <th class="text-right">Thực tế</th>
+                      <th class="text-right">Chênh lệch</th>
+                      <th class="text-right">% Tổng</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="category in (filters.reportType === 'income' 
+                      ? month.incomeCategories 
+                      : month.expenseCategories)" 
+                      :key="'month-'+month.month+'-cat-'+category.categoryId">
+                      <td class="category-name">{{ category.categoryName }}</td>
+                      <td class="text-right">{{ formatCurrency(category.budgetAmount) }}</td>
+                      <td class="text-right">{{ formatCurrency(category.actualAmount) }}</td>
+                      <td 
+                        class="text-right" 
+                        :class="getKpiClass(category.actualAmount - category.budgetAmount)"
+                      >
+                        <i :class="['bi', getKpiIcon(category.actualAmount - category.budgetAmount)]"></i>
+                        {{ formatCurrency(Math.abs(category.actualAmount - category.budgetAmount)) }}
+                      </td>
+                      <td class="text-right">{{ category.percentageOfTotal.toFixed(1) }}%</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
         </div>
         
         <!-- Categories Table -->
@@ -794,5 +871,110 @@ onMounted(() => {
 
 .month-name {
   font-weight: 500;
+}
+
+/* Add new styles for month-detail-section */
+.month-detail-section {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px dashed #e5e7eb;
+}
+
+.month-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.75rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.month-total {
+  font-size: 0.9rem;
+  color: #6b7280;
+}
+
+.month-categories-table {
+  margin-bottom: 0;
+}
+
+.month-categories-table th {
+  font-size: 0.9rem;
+}
+
+.month-categories-table td {
+  font-size: 0.9rem;
+}
+
+/* Thêm nút hiển thị/ẩn chi tiết từng tháng */
+.toggle-month-details {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.toggle-details-btn {
+  padding: 0.5rem 1rem;
+  background-color: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  margin: 0 auto;
+}
+
+.toggle-details-btn i {
+  margin-right: 0.5rem;
+}
+
+.toggle-details-btn:hover {
+  background-color: #e5e7eb;
+}
+
+/* Thêm styles mới */
+.clickable {
+  cursor: pointer;
+}
+
+.month-title:hover {
+  background-color: #f9fafb;
+}
+
+/* Màu xen kẽ cho các tháng */
+.month-detail-section:nth-child(odd) {
+  background-color: #f9fafb;
+}
+
+/* Thêm màu sắc cho các tháng để phân biệt */
+.month-title {
+  border-left: 4px solid;
+  padding-left: 0.5rem;
+}
+
+.month-detail-section:nth-child(1) .month-title,
+.month-detail-section:nth-child(5) .month-title,
+.month-detail-section:nth-child(9) .month-title {
+  border-color: #3b82f6; /* blue */
+}
+
+.month-detail-section:nth-child(2) .month-title,
+.month-detail-section:nth-child(6) .month-title,
+.month-detail-section:nth-child(10) .month-title {
+  border-color: #10b981; /* green */
+}
+
+.month-detail-section:nth-child(3) .month-title,
+.month-detail-section:nth-child(7) .month-title,
+.month-detail-section:nth-child(11) .month-title {
+  border-color: #f59e0b; /* amber */
+}
+
+.month-detail-section:nth-child(4) .month-title,
+.month-detail-section:nth-child(8) .month-title,
+.month-detail-section:nth-child(12) .month-title {
+  border-color: #ef4444; /* red */
 }
 </style>
