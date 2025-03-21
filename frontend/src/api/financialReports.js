@@ -30,5 +30,57 @@ export const financialReports = {
       console.error('Error fetching monthly report:', error);
       throw error;
     }
+  },
+
+  // Thêm phương thức mới để lấy báo cáo quý (theo từng tháng)
+  async getQuarterlyReport(year, quarter) {
+    const params = new URLSearchParams();
+    
+    if (year) {
+      params.append('year', year);
+    }
+    
+    if (quarter) {
+      params.append('quarter', quarter);
+    }
+    
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+    
+    try {
+      const auth = useAuthStore();
+      const response = await axios.get(`${BASE_URL}/quarterly${queryString}`, {
+        headers: {
+          'Authorization': `Bearer ${auth.token}`
+        }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching quarterly report:', error);
+      throw error;
+    }
+  },
+
+  // Thêm phương thức mới để lấy báo cáo năm (theo từng tháng)
+  async getYearlyReport(year) {
+    const params = new URLSearchParams();
+    
+    if (year) {
+      params.append('year', year);
+    }
+    
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+    
+    try {
+      const auth = useAuthStore();
+      const response = await axios.get(`${BASE_URL}/yearly${queryString}`, {
+        headers: {
+          'Authorization': `Bearer ${auth.token}`
+        }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching yearly report:', error);
+      throw error;
+    }
   }
 };
