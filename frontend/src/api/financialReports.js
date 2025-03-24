@@ -82,5 +82,29 @@ export const financialReports = {
       console.error('Error fetching yearly report:', error);
       throw error;
     }
+  },
+
+  // Method to get cash flow data by year
+  async getCashFlow(year) {
+    const params = new URLSearchParams();
+    
+    if (year) {
+      params.append('year', year);
+    }
+    
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+    
+    try {
+      const auth = useAuthStore();
+      const response = await axios.get(`${BASE_URL}/cash-flow${queryString}`, {
+        headers: {
+          'Authorization': `Bearer ${auth.token}`
+        }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching cash flow data:', error);
+      throw error;
+    }
   }
 };

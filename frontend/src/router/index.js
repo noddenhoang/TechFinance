@@ -70,9 +70,12 @@ const routes = [
   // Report Routes
   {
     path: '/monthly-reports',
-    name: 'MonthlyReports',
+    name: 'monthly-reports',
     component: () => import('../views/reports/MonthlyReportsView.vue'),
-    meta: { requiresAuth: true }
+    meta: {
+      requiresAuth: true,
+      title: 'Báo cáo - Dòng tiền'
+    }
   },
   {
     path: '/budget-overview',

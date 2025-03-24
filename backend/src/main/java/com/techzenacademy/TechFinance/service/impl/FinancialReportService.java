@@ -1,24 +1,28 @@
 package com.techzenacademy.TechFinance.service.impl;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.YearMonth;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import com.techzenacademy.TechFinance.dto.report.CashFlowReportDTO;
 import com.techzenacademy.TechFinance.dto.report.MonthlyReportDTO;
-import com.techzenacademy.TechFinance.dto.report.MonthlyReportDTO.*;
-import com.techzenacademy.TechFinance.entity.ExpenseBudget;
+import com.techzenacademy.TechFinance.dto.report.MonthlyReportDTO.CategoryComparisonDTO;
+import com.techzenacademy.TechFinance.dto.report.MonthlyReportDTO.ReportSummaryDTO;
 import com.techzenacademy.TechFinance.entity.ExpenseTransaction;
-import com.techzenacademy.TechFinance.entity.IncomeBudget;
 import com.techzenacademy.TechFinance.entity.IncomeTransaction;
 import com.techzenacademy.TechFinance.repository.ExpenseBudgetRepository;
 import com.techzenacademy.TechFinance.repository.ExpenseTransactionRepository;
 import com.techzenacademy.TechFinance.repository.IncomeBudgetRepository;
 import com.techzenacademy.TechFinance.repository.IncomeTransactionRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.time.LocalDate;
-import java.time.YearMonth;
-import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class FinancialReportService {
@@ -284,5 +288,80 @@ public class FinancialReportService {
         comparisons.sort((a, b) -> b.getActualAmount().compareTo(a.getActualAmount()));
         
         return comparisons;
+    }
+
+    /**
+     * Tạo báo cáo dòng tiền theo năm
+     */
+    public CashFlowReportDTO generateCashFlowReport(Integer year) {
+        CashFlowReportDTO report = new CashFlowReportDTO();
+        report.setYear(year);
+        
+        List<CashFlowReportDTO.MonthlyDataDTO> monthlyDataList = new ArrayList<>();
+        BigDecimal runningBalance = BigDecimal.ZERO; // Số dư cộng dồn
+        BigDecimal totalIncome = BigDecimal.ZERO;
+        BigDecimal totalExpense = BigDecimal.ZERO;
+        
+        // Tạo dữ liệu cho từng tháng trong năm
+        for (int month = 1; month <= 12; month++) {
+            CashFlowReportDTO.MonthlyDataDTO monthData = new CashFlowReportDTO.MonthlyDataDTO();
+            monthData.setMonth(month);
+            
+            // Khoảng thời gian của tháng
+            LocalDate startDate = LocalDate.of(year, month, 1);
+            LocalDate endDate = YearMonth.of(year, month).atEndOfMonth();
+            
+            // Lấy tất cả giao dịch thu nhập và chi phí đã thanh toán trong tháng
+            List<IncomeTransaction> incomeTransactions = incomeTransactionRepository
+                    .findByTransactionDateBetweenOrderByTransactionDateDesc(startDate, endDate)
+                    .stream()
+                    .filter(t -> t.getPaymentStatus() == IncomeTransaction.PaymentStatus.RECEIVED)
+                    .collect(Collectors.toList());
+            
+            List<ExpenseTransaction> expenseTransactions = expenseTransactionRepository
+                    .findByTransactionDateBetweenOrderByTransactionDateDesc(startDate, endDate)
+                    .stream()
+                    .filter(t -> t.getPaymentStatus() == ExpenseTransaction.PaymentStatus.PAID)
+                    .collect(Collectors.toList());
+            
+            // Tính tổng thu nhập và chi phí của tháng
+            BigDecimal monthlyIncome = incomeTransactions.stream()
+                    .map(IncomeTransaction::getAmount)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            
+            BigDecimal monthlyExpense = expenseTransactions.stream()
+                    .map(ExpenseTransaction::getAmount)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            
+            // Tính lợi nhuận/lỗ của tháng
+            BigDecimal monthlyProfit = monthlyIncome.subtract(monthlyExpense);
+            
+            // Cập nhật số dư cộng dồn
+            runningBalance = runningBalance.add(monthlyProfit);
+            
+            // Cập nhật tổng thu nhập và chi phí
+            totalIncome = totalIncome.add(monthlyIncome);
+            totalExpense = totalExpense.add(monthlyExpense);
+            
+            // Cập nhật dữ liệu tháng
+            monthData.setIncome(monthlyIncome);
+            monthData.setExpense(monthlyExpense);
+            monthData.setProfit(monthlyProfit);
+            monthData.setBalance(runningBalance);
+            
+            monthlyDataList.add(monthData);
+        }
+        
+        // Tạo tổng kết
+        CashFlowReportDTO.SummaryDTO summary = new CashFlowReportDTO.SummaryDTO();
+        summary.setTotalIncome(totalIncome);
+        summary.setTotalExpense(totalExpense);
+        summary.setTotalProfit(totalIncome.subtract(totalExpense));
+        summary.setEndBalance(runningBalance);
+        
+        report.setSummary(summary);
+        report.setMonthlyData(monthlyDataList);
+        
+        return report;
     }
 }

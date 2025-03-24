@@ -1,15 +1,20 @@
 package com.techzenacademy.TechFinance.controller;
 
-import com.techzenacademy.TechFinance.dto.report.MonthlyReportDTO;
-import com.techzenacademy.TechFinance.service.impl.FinancialReportService;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
 import java.time.LocalDate;
 import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.techzenacademy.TechFinance.dto.report.MonthlyReportDTO;
+import com.techzenacademy.TechFinance.service.impl.FinancialReportService;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
 @RequestMapping("/api/reports")
@@ -67,5 +72,18 @@ public class FinancialReportController {
         }
         
         return ResponseEntity.ok(reportService.generateYearlyReport(year));
+    }
+
+    @GetMapping("/cash-flow")
+    @Operation(summary = "Lấy báo cáo dòng tiền theo năm")
+    public ResponseEntity<?> getCashFlowReport(
+            @RequestParam(name = "year", required = false) Integer year) {
+        
+        // Nếu không cung cấp năm, sử dụng năm hiện tại
+        if (year == null) {
+            year = LocalDate.now().getYear();
+        }
+        
+        return ResponseEntity.ok(reportService.generateCashFlowReport(year));
     }
 }
