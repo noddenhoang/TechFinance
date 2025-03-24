@@ -3,13 +3,10 @@ import { ref, reactive, computed, onMounted, nextTick } from 'vue';
 import AppLayout from '../../components/layouts/AppLayout.vue';
 import { financialReports } from '../../api/financialReports';
 
-// Thay đổi cấu trúc filters
+// Simplified filters - only report type
 const filters = reactive({
-  year: new Date().getFullYear(),
-  timeFrame: 'month', // 'month', 'quarter', 'year'
-  month: new Date().getMonth() + 1,
-  quarter: Math.floor(new Date().getMonth() / 3) + 1,
-  reportType: 'income' // 'income' hoặc 'expense'
+  year: new Date().getFullYear(), // Always use current year
+  reportType: 'income' // 'income' or 'expense'
 });
 
 // Data state
@@ -17,87 +14,17 @@ const reportData = ref(null);
 const isLoading = ref(false);
 const error = ref(null);
 
-// Thêm state để kiểm soát hiển thị chi tiết từng tháng
-const showMonthlyDetails = ref(false);
+// UI State
+const activeTab = ref('month'); // 'month' or 'quarter'
 
-// Thêm phương thức để toggle hiển thị chi tiết
-const toggleMonthlyDetails = () => {
-  showMonthlyDetails.value = !showMonthlyDetails.value;
-};
-
-// Thêm state quản lý hiện tại đang xem tháng nào
-const activeMonths = reactive(new Set());
-
-// Phương thức để toggle hiển thị chi tiết tháng cụ thể
-const toggleMonthDetail = (monthId) => {
-  if (activeMonths.has(monthId)) {
-    activeMonths.delete(monthId);
-  } else {
-    activeMonths.add(monthId);
-  }
-};
-
-// Computed lists
-const months = computed(() => [
-  { id: 1, name: 'Tháng 1' },
-  { id: 2, name: 'Tháng 2' },
-  { id: 3, name: 'Tháng 3' },
-  { id: 4, name: 'Tháng 4' },
-  { id: 5, name: 'Tháng 5' },
-  { id: 6, name: 'Tháng 6' },
-  { id: 7, name: 'Tháng 7' },
-  { id: 8, name: 'Tháng 8' },
-  { id: 9, name: 'Tháng 9' },
-  { id: 10, name: 'Tháng 10' },
-  { id: 11, name: 'Tháng 11' },
-  { id: 12, name: 'Tháng 12' }
-]);
-
-// Thêm danh sách quý
-const quarters = computed(() => [
-  { id: 1, name: 'Quý 1 (Tháng 1-3)' },
-  { id: 2, name: 'Quý 2 (Tháng 4-6)' },
-  { id: 3, name: 'Quý 3 (Tháng 7-9)' },
-  { id: 4, name: 'Quý 4 (Tháng 10-12)' }
-]);
-
-const years = computed(() => {
-  const currentYear = new Date().getFullYear();
-  const yearList = [];
-  for (let i = 2020; i <= currentYear; i++) {
-    yearList.push(i);
-  }
-  return yearList;
-});
-
-// Computed cho tiêu đề báo cáo
-const reportTitle = computed(() => {
-  if (filters.timeFrame === 'month') {
-    return `${months.value.find(m => m.id === filters.month)?.name} ${filters.year}`;
-  } else if (filters.timeFrame === 'quarter') {
-    return `${quarters.value.find(q => q.id === filters.quarter)?.name}, ${filters.year}`;
-  } else {
-    return `Năm ${filters.year}`;
-  }
-});
-
-// Cập nhật phương thức loadData để hỗ trợ nhiều timeframe
+// Load report data - always load yearly data
 const loadData = async () => {
   isLoading.value = true;
   error.value = null;
   
   try {
-    // Tùy thuộc vào timeFrame, gọi API phù hợp
-    if (filters.timeFrame === 'month') {
-      // Báo cáo tháng
-      reportData.value = await financialReports.getMonthlyReport(filters.year, filters.month);
-    } else if (filters.timeFrame === 'quarter') {
-      // Báo cáo quý
-      reportData.value = await financialReports.getQuarterlyReport(filters.year, filters.quarter);
-    } else {
-      // Báo cáo năm
-      reportData.value = await financialReports.getYearlyReport(filters.year);
-    }
+    // Always load yearly data for the enhanced UI
+    reportData.value = await financialReports.getYearlyReport(filters.year);
   } catch (err) {
     console.error('Error loading report data:', err);
     error.value = 'Không thể tải dữ liệu báo cáo. Vui lòng thử lại sau.';
@@ -106,47 +33,98 @@ const loadData = async () => {
   }
 };
 
-// Tính toán các giá trị tổng cộng cho bảng dữ liệu
-const totals = computed(() => {
-  if (!reportData.value) return null;
-  
-  // Nếu là báo cáo tháng (đối tượng đơn)
-  if (!Array.isArray(reportData.value)) {
-    return {
-      totalBudget: filters.reportType === 'income' 
-        ? reportData.value.summary.totalIncomeBudget 
-        : reportData.value.summary.totalExpenseBudget,
-      totalActual: filters.reportType === 'income'
-        ? reportData.value.summary.totalIncomeActual
-        : reportData.value.summary.totalExpenseActual
-    };
+// Calculate total amount by summing all category amounts
+const calculateTotalAmount = () => {
+  if (!categories.value || !categories.value.length) {
+    return 0;
   }
   
-  // Nếu là báo cáo quý hoặc năm (mảng)
-  return {
-    totalBudget: reportData.value.reduce((sum, month) => 
-      sum + (filters.reportType === 'income' 
-        ? month.summary.totalIncomeBudget 
-        : month.summary.totalExpenseBudget), 0),
-    totalActual: reportData.value.reduce((sum, month) => 
-      sum + (filters.reportType === 'income' 
-        ? month.summary.totalIncomeActual 
-        : month.summary.totalExpenseActual), 0)
-  };
-});
+  return categories.value.reduce((total, category) => {
+    return total + (category.actualAmount || 0);
+  }, 0);
+};
+
+// Get monthly amount for a specific category and month
+const getCategoryMonthlyAmount = (category, month) => {
+  if (!reportData.value || !Array.isArray(reportData.value)) return formatCurrency(0);
+  
+  // Find the month data in the report
+  const monthData = reportData.value.find(m => m.month === month && m.year === filters.year);
+  if (!monthData) return formatCurrency(0);
+  
+  // Find the category in that month
+  const categoryList = filters.reportType === 'income' ? monthData.incomeCategories : monthData.expenseCategories;
+  const categoryData = categoryList.find(c => c.categoryId === category.categoryId);
+  
+  return formatCurrency(categoryData ? categoryData.actualAmount : 0);
+};
+
+// Get quarterly amount for a specific category and quarter
+const getCategoryQuarterlyAmount = (category, quarter) => {
+  if (!reportData.value || !Array.isArray(reportData.value)) return formatCurrency(0);
+  
+  // Calculate months in the quarter
+  const startMonth = (quarter - 1) * 3 + 1;
+  const endMonth = startMonth + 2;
+  
+  // Sum all amounts for this category in those months
+  let total = 0;
+  for (let month = startMonth; month <= endMonth; month++) {
+    const monthData = reportData.value.find(m => m.month === month && m.year === filters.year);
+    if (!monthData) continue;
+    
+    const categoryList = filters.reportType === 'income' ? monthData.incomeCategories : monthData.expenseCategories;
+    const categoryData = categoryList.find(c => c.categoryId === category.categoryId);
+    
+    if (categoryData) {
+      total += parseFloat(categoryData.actualAmount || 0);
+    }
+  }
+  
+  return formatCurrency(total);
+};
+
+// Get total amount for a specific month across all categories
+const getMonthlyTotal = (month) => {
+  if (!reportData.value || !Array.isArray(reportData.value)) return formatCurrency(0);
+  
+  const monthData = reportData.value.find(m => m.month === month && m.year === filters.year);
+  if (!monthData) return formatCurrency(0);
+  
+  const total = filters.reportType === 'income' 
+    ? monthData.summary.totalIncomeActual 
+    : monthData.summary.totalExpenseActual;
+    
+  return formatCurrency(total);
+};
+
+// Get total amount for a specific quarter across all categories
+const getQuarterlyTotal = (quarter) => {
+  if (!reportData.value || !Array.isArray(reportData.value)) return formatCurrency(0);
+  
+  // Calculate months in the quarter
+  const startMonth = (quarter - 1) * 3 + 1;
+  const endMonth = startMonth + 2;
+  
+  // Sum all totals for these months
+  let total = 0;
+  for (let month = startMonth; month <= endMonth; month++) {
+    const monthData = reportData.value.find(m => m.month === month && m.year === filters.year);
+    if (!monthData) continue;
+    
+    total += parseFloat(filters.reportType === 'income' 
+      ? monthData.summary.totalIncomeActual 
+      : monthData.summary.totalExpenseActual);
+  }
+  
+  return formatCurrency(total);
+};
 
 // Lấy danh sách danh mục
 const categories = computed(() => {
   if (!reportData.value) return [];
   
-  // Nếu là báo cáo tháng (đối tượng đơn)
-  if (!Array.isArray(reportData.value)) {
-    return filters.reportType === 'income' 
-      ? reportData.value.incomeCategories 
-      : reportData.value.expenseCategories;
-  }
-  
-  // Nếu là báo cáo quý hoặc năm, ghép danh mục từ các tháng
+  // Nếu là báo cáo năm, ghép danh mục từ các tháng
   // Thống kê theo danh mục
   const categoryMap = new Map();
   
@@ -175,7 +153,7 @@ const categories = computed(() => {
   });
   
   // Tính lại phần trăm của tổng
-  const totalActual = totals.value.totalActual;
+  const totalActual = calculateTotalAmount();
   const categoriesArray = Array.from(categoryMap.values());
   
   categoriesArray.forEach(category => {
@@ -190,11 +168,8 @@ const categories = computed(() => {
   return categoriesArray.sort((a, b) => b.actualAmount - a.actualAmount);
 });
 
-const applyFilter = () => {
-  loadData();
-};
-
 const formatCurrency = (value) => {
+  if (!value) return '0 đ';
   return new Intl.NumberFormat('vi-VN', { 
     style: 'currency', 
     currency: 'VND',
@@ -202,16 +177,9 @@ const formatCurrency = (value) => {
   }).format(value);
 };
 
-const getKpiClass = (value) => {
-  if (value > 0) return 'positive';
-  if (value < 0) return 'negative';
-  return '';
-};
-
-const getKpiIcon = (value) => {
-  if (value > 0) return 'bi-arrow-up-right';
-  if (value < 0) return 'bi-arrow-down-right';
-  return 'bi-dash';
+const formatPercentage = (value) => {
+  if (!value) return '0%';
+  return `${Math.round(value)}%`;
 };
 
 // Lifecycle
@@ -225,10 +193,13 @@ onMounted(() => {
 
 <template>
   <AppLayout>
-    <template #page-title>Báo cáo Chi tiết Theo Danh mục</template>
+    <template #page-title>Báo cáo Theo Danh mục</template>
     
     <div class="content-container">
-      <!-- Filter Section -->
+      <h2>Báo cáo chi tiết theo danh mục</h2>
+      <p>Trang này hiển thị báo cáo thu nhập và chi phí theo từng danh mục.</p>
+      
+      <!-- Simplified filter container -->
       <div class="filter-container">
         <div class="filter-header">
           <h3 class="card-title">
@@ -238,321 +209,148 @@ onMounted(() => {
         <div class="filter-content">
           <div class="filter-grid">
             <div class="form-group">
-              <label class="form-label">Năm</label>
-              <select v-model="filters.year" class="form-select">
-                <option v-for="year in years" :key="year" :value="year">{{ year }}</option>
-              </select>
-            </div>
-            
-            <div class="form-group">
-              <label class="form-label">Khoảng thời gian</label>
-              <select v-model="filters.timeFrame" class="form-select">
-                <option value="month">Theo tháng</option>
-                <option value="quarter">Theo quý</option>
-                <option value="year">Theo năm</option>
-              </select>
-            </div>
-            
-            <!-- Hiển thị bộ lọc tháng nếu xem theo tháng -->
-            <div v-if="filters.timeFrame === 'month'" class="form-group">
-              <label class="form-label">Tháng</label>
-              <select v-model="filters.month" class="form-select">
-                <option v-for="month in months" :key="month.id" :value="month.id">{{ month.name }}</option>
-              </select>
-            </div>
-            
-            <!-- Hiển thị bộ lọc quý nếu xem theo quý -->
-            <div v-if="filters.timeFrame === 'quarter'" class="form-group">
-              <label class="form-label">Quý</label>
-              <select v-model="filters.quarter" class="form-select">
-                <option v-for="quarter in quarters" :key="quarter.id" :value="quarter.id">{{ quarter.name }}</option>
-              </select>
-            </div>
-            
-            <div class="form-group">
               <label class="form-label">Loại báo cáo</label>
-              <select v-model="filters.reportType" class="form-select">
-                <option value="income">Thu nhập</option>
-                <option value="expense">Chi tiêu</option>
+              <select v-model="filters.reportType" class="form-select" @change="loadData">
+                <option value="income">8.4. Thu nhập theo danh mục</option>
+                <option value="expense">8.5. Chi phí theo danh mục</option>
               </select>
             </div>
-          </div>
-          
-          <div class="filter-actions">
-            <button @click="applyFilter" class="btn-primary">
-              <i class="bi bi-search"></i> Xem báo cáo
-            </button>
           </div>
         </div>
       </div>
       
-      <!-- Report Content -->
-      <div v-if="isLoading" class="card-empty-state">
+      <!-- Report Container -->
+      <div class="report-container" v-if="!isLoading && !error && reportData">
+        <!-- Report header -->
+        <h2 class="report-section-title">
+          {{ filters.reportType === 'income' ? '8.4. Thu nhập theo danh mục' : '8.5. Chi phí theo danh mục' }}
+        </h2>
+        <p class="report-section-subtitle">Thông tin được sắp xếp theo tổng {{ filters.reportType === 'income' ? 'thu nhập' : 'chi phí' }} năm {{ filters.year }}</p>
+        
+        <!-- Tab navigation -->
+        <div class="report-tabs">
+          <div class="tab-container">
+            <button 
+              class="tab-button" 
+              :class="{ active: activeTab === 'month' }"
+              @click="activeTab = 'month'"
+            >
+              Tháng
+            </button>
+            <button 
+              class="tab-button" 
+              :class="{ active: activeTab === 'quarter' }"
+              @click="activeTab = 'quarter'"
+            >
+              Quý
+            </button>
+          </div>
+        </div>
+        
+        <!-- Monthly view table -->
+        <div v-if="activeTab === 'month'" class="report-table-container">
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th>Danh mục</th>
+                <th v-for="month in 12" :key="month">T{{ month }}</th>
+                <th>Tổng năm</th>
+                <th>%</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="category in categories" :key="category.categoryId">
+                <td>{{ category.categoryName }}</td>
+                <!-- Monthly amounts -->
+                <template v-for="month in 12" :key="month">
+                  <td>
+                    {{ getCategoryMonthlyAmount(category, month) }}
+                  </td>
+                </template>
+                <td>{{ formatCurrency(category.actualAmount) }}</td>
+                <td>{{ formatPercentage(category.percentageOfTotal) }}</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr>
+                <th>Tổng cộng</th>
+                <!-- Monthly totals -->
+                <template v-for="month in 12" :key="month">
+                  <th>
+                    {{ getMonthlyTotal(month) }}
+                  </th>
+                </template>
+                <th>{{ formatCurrency(calculateTotalAmount()) }}</th>
+                <th>100%</th>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        
+        <!-- Quarterly view table -->
+        <div v-if="activeTab === 'quarter'" class="report-table-container">
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th>Danh mục</th>
+                <th>Q1</th>
+                <th>Q2</th>
+                <th>Q3</th>
+                <th>Q4</th>
+                <th>Tổng năm</th>
+                <th>%</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="category in categories" :key="category.categoryId">
+                <td>{{ category.categoryName }}</td>
+                <!-- Quarterly amounts -->
+                <template v-for="quarter in 4" :key="quarter">
+                  <td>
+                    {{ getCategoryQuarterlyAmount(category, quarter) }}
+                  </td>
+                </template>
+                <td>{{ formatCurrency(category.actualAmount) }}</td>
+                <td>{{ formatPercentage(category.percentageOfTotal) }}</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr>
+                <th>Tổng cộng</th>
+                <!-- Quarterly totals -->
+                <template v-for="quarter in 4" :key="quarter">
+                  <th>
+                    {{ getQuarterlyTotal(quarter) }}
+                  </th>
+                </template>
+                <th>{{ formatCurrency(calculateTotalAmount()) }}</th>
+                <th>100%</th>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+      
+      <!-- Loading indicator -->
+      <div v-if="isLoading" class="loading-spinner-container">
         <div class="loading-spinner"></div>
         <p>Đang tải dữ liệu báo cáo...</p>
       </div>
       
-      <div v-else-if="error" class="card-empty-state error">
-        <i class="bi bi-exclamation-circle error-icon"></i>
+      <!-- Error message -->
+      <div v-else-if="error" class="error-message">
+        <i class="bi bi-exclamation-triangle"></i>
         <p>{{ error }}</p>
         <button @click="loadData" class="btn-primary">
           <i class="bi bi-arrow-repeat"></i> Thử lại
         </button>
       </div>
       
-      <div v-else-if="!reportData" class="card-empty-state">
-        <i class="bi bi-bar-chart empty-icon"></i>
-        <p>Không có dữ liệu báo cáo</p>
+      <!-- No data message -->
+      <div v-else-if="!reportData" class="no-data">
+        <i class="bi bi-info-circle"></i>
+        <p>Không có dữ liệu báo cáo.</p>
       </div>
-      
-      <template v-else>
-        <!-- Report header -->
-        <div class="report-header">
-          <h2 class="report-title">
-            {{ filters.reportType === 'income' ? 'Báo cáo thu nhập' : 'Báo cáo chi tiêu' }} theo danh mục
-          </h2>
-          <h3 class="report-subtitle">
-            {{ reportTitle }}
-          </h3>
-        </div>
-        
-        <!-- KPI Cards -->
-        <div class="kpi-cards">
-          <!-- Total card -->
-          <div class="kpi-card">
-            <div class="kpi-title">Tổng {{ filters.reportType === 'income' ? 'thu nhập' : 'chi tiêu' }}</div>
-            <div class="kpi-value">{{ formatCurrency(totals.totalActual) }}</div>
-            <div 
-              class="kpi-comparison" 
-              :class="getKpiClass(totals.totalActual - totals.totalBudget)"
-            >
-              <i :class="['bi', getKpiIcon(totals.totalActual - totals.totalBudget)]"></i>
-              {{ formatCurrency(Math.abs(totals.totalActual - totals.totalBudget)) }}
-              so với kế hoạch
-            </div>
-            <div class="kpi-detail">
-              {{ totals.totalBudget > 0 ? ((totals.totalActual / totals.totalBudget) * 100).toFixed(1) : 0 }}% 
-              kế hoạch đạt được
-            </div>
-          </div>
-          
-          <!-- Categories count -->
-          <div class="kpi-card">
-            <div class="kpi-title">Số danh mục</div>
-            <div class="kpi-value">{{ categories.length }}</div>
-            <div class="kpi-detail">
-              Có {{ categories.length }} danh mục {{ filters.reportType === 'income' ? 'thu nhập' : 'chi tiêu' }}
-            </div>
-          </div>
-          
-          <!-- Top category -->
-          <div class="kpi-card" v-if="categories.length > 0">
-            <div class="kpi-title">Danh mục lớn nhất</div>
-            <div class="kpi-value">{{ categories[0].categoryName }}</div>
-            <div class="kpi-detail">
-              {{ formatCurrency(categories[0].actualAmount) }}
-              ({{ categories[0].percentageOfTotal.toFixed(1) }}% tổng giá trị)
-            </div>
-          </div>
-        </div>
-        
-        <!-- Monthly Data Table when viewing quarterly or yearly -->
-        <div v-if="filters.timeFrame !== 'month' && Array.isArray(reportData)" class="table-section">
-          <h3 class="section-title">Chi tiết theo tháng</h3>
-          <div class="table-container">
-            <table class="monthly-table">
-              <thead>
-                <tr>
-                  <th>Tháng</th>
-                  <th class="text-right">Kế hoạch</th>
-                  <th class="text-right">Thực tế</th>
-                  <th class="text-right">Chênh lệch</th>
-                  <th class="text-right">% Đạt được</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="(month, index) in reportData" :key="index">
-                  <td class="month-name">Tháng {{ month.month }}</td>
-                  <td class="text-right">
-                    {{ formatCurrency(filters.reportType === 'income' 
-                      ? month.summary.totalIncomeBudget 
-                      : month.summary.totalExpenseBudget) }}
-                  </td>
-                  <td class="text-right">
-                    {{ formatCurrency(filters.reportType === 'income' 
-                      ? month.summary.totalIncomeActual 
-                      : month.summary.totalExpenseActual) }}
-                  </td>
-                  <td 
-                    class="text-right" 
-                    :class="getKpiClass(
-                      (filters.reportType === 'income' 
-                        ? month.summary.totalIncomeActual 
-                        : month.summary.totalExpenseActual) - 
-                      (filters.reportType === 'income' 
-                        ? month.summary.totalIncomeBudget 
-                        : month.summary.totalExpenseBudget)
-                    )"
-                  >
-                    <i :class="['bi', getKpiIcon(
-                      (filters.reportType === 'income' 
-                        ? month.summary.totalIncomeActual 
-                        : month.summary.totalExpenseActual) - 
-                      (filters.reportType === 'income' 
-                        ? month.summary.totalIncomeBudget 
-                        : month.summary.totalExpenseBudget)
-                    )]"></i>
-                    {{ formatCurrency(Math.abs(
-                      (filters.reportType === 'income' 
-                        ? month.summary.totalIncomeActual 
-                        : month.summary.totalExpenseActual) - 
-                      (filters.reportType === 'income' 
-                        ? month.summary.totalIncomeBudget 
-                        : month.summary.totalExpenseBudget)
-                    )) }}
-                  </td>
-                  <td class="text-right">
-                    {{ 
-                      (filters.reportType === 'income' 
-                        ? month.summary.totalIncomeBudget 
-                        : month.summary.totalExpenseBudget) > 0
-                      ? (((filters.reportType === 'income' 
-                          ? month.summary.totalIncomeActual 
-                          : month.summary.totalExpenseActual) / 
-                        (filters.reportType === 'income' 
-                          ? month.summary.totalIncomeBudget 
-                          : month.summary.totalExpenseBudget)) * 100).toFixed(1)
-                      : 0 
-                    }}%
-                  </td>
-                </tr>
-              </tbody>
-              <tfoot>
-                <tr>
-                  <th>Tổng cộng</th>
-                  <th class="text-right">{{ formatCurrency(totals.totalBudget) }}</th>
-                  <th class="text-right">{{ formatCurrency(totals.totalActual) }}</th>
-                  <th 
-                    class="text-right"
-                    :class="getKpiClass(totals.totalActual - totals.totalBudget)"
-                  >
-                    <i :class="['bi', getKpiIcon(totals.totalActual - totals.totalBudget)]"></i>
-                    {{ formatCurrency(Math.abs(totals.totalActual - totals.totalBudget)) }}
-                  </th>
-                  <th class="text-right">
-                    {{ totals.totalBudget > 0 ? ((totals.totalActual / totals.totalBudget) * 100).toFixed(1) : 0 }}%
-                  </th>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-          
-          <!-- Sau bảng tổng kết theo tháng, thêm nút toggle -->
-          <div class="toggle-month-details" v-if="filters.timeFrame !== 'month' && Array.isArray(reportData)">
-            <button @click="toggleMonthlyDetails" class="toggle-details-btn">
-              <i :class="['bi', showMonthlyDetails ? 'bi-chevron-up' : 'bi-chevron-down']"></i>
-              {{ showMonthlyDetails ? 'Ẩn chi tiết từng tháng' : 'Hiển thị chi tiết từng tháng' }}
-            </button>
-          </div>
-          
-          <!-- Cập nhật phần hiển thị chi tiết từng tháng -->
-          <div v-if="filters.timeFrame !== 'month' && Array.isArray(reportData) && showMonthlyDetails" class="monthly-details">
-            <!-- Chi tiết từng tháng như đã thêm trước đó -->
-            <div v-for="(month, monthIndex) in reportData" :key="'month-'+monthIndex" class="month-detail-section">
-              <h4 @click="toggleMonthDetail(month.month)" class="month-title clickable">
-                {{ months.find(m => m.id === month.month)?.name }} {{ month.year }}
-                <span class="month-total">
-                  Tổng: {{ formatCurrency(filters.reportType === 'income' 
-                    ? month.summary.totalIncomeActual 
-                    : month.summary.totalExpenseActual) }}
-                </span>
-                <i :class="['bi', activeMonths.has(month.month) ? 'bi-chevron-up' : 'bi-chevron-down']"></i>
-              </h4>
-              
-              <div v-if="activeMonths.has(month.month)" class="table-container">
-                <!-- Bảng chi tiết danh mục của từng tháng -->
-                <table class="categories-table month-categories-table">
-                  <thead>
-                    <tr>
-                      <th>Danh mục</th>
-                      <th class="text-right">Kế hoạch</th>
-                      <th class="text-right">Thực tế</th>
-                      <th class="text-right">Chênh lệch</th>
-                      <th class="text-right">% Tổng</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="category in (filters.reportType === 'income' 
-                      ? month.incomeCategories 
-                      : month.expenseCategories)" 
-                      :key="'month-'+month.month+'-cat-'+category.categoryId">
-                      <td class="category-name">{{ category.categoryName }}</td>
-                      <td class="text-right">{{ formatCurrency(category.budgetAmount) }}</td>
-                      <td class="text-right">{{ formatCurrency(category.actualAmount) }}</td>
-                      <td 
-                        class="text-right" 
-                        :class="getKpiClass(category.actualAmount - category.budgetAmount)"
-                      >
-                        <i :class="['bi', getKpiIcon(category.actualAmount - category.budgetAmount)]"></i>
-                        {{ formatCurrency(Math.abs(category.actualAmount - category.budgetAmount)) }}
-                      </td>
-                      <td class="text-right">{{ category.percentageOfTotal.toFixed(1) }}%</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Categories Table -->
-        <div class="table-section">
-          <h3 class="section-title">Chi tiết theo danh mục</h3>
-          <div class="table-container">
-            <table class="categories-table">
-              <thead>
-                <tr>
-                  <th>Danh mục</th>
-                  <th class="text-right">Kế hoạch</th>
-                  <th class="text-right">Thực tế</th>
-                  <th class="text-right">Chênh lệch</th>
-                  <th class="text-right">% Tổng</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="category in categories" :key="category.categoryId">
-                  <td class="category-name">{{ category.categoryName }}</td>
-                  <td class="text-right">{{ formatCurrency(category.budgetAmount) }}</td>
-                  <td class="text-right">{{ formatCurrency(category.actualAmount) }}</td>
-                  <td 
-                    class="text-right" 
-                    :class="getKpiClass(category.actualAmount - category.budgetAmount)"
-                  >
-                    <i :class="['bi', getKpiIcon(category.actualAmount - category.budgetAmount)]"></i>
-                    {{ formatCurrency(Math.abs(category.actualAmount - category.budgetAmount)) }}
-                  </td>
-                  <td class="text-right">{{ category.percentageOfTotal.toFixed(1) }}%</td>
-                </tr>
-              </tbody>
-              <tfoot>
-                <tr>
-                  <th>Tổng cộng</th>
-                  <th class="text-right">{{ formatCurrency(totals.totalBudget) }}</th>
-                  <th class="text-right">{{ formatCurrency(totals.totalActual) }}</th>
-                  <th 
-                    class="text-right"
-                    :class="getKpiClass(totals.totalActual - totals.totalBudget)"
-                  >
-                    <i :class="['bi', getKpiIcon(totals.totalActual - totals.totalBudget)]"></i>
-                    {{ formatCurrency(Math.abs(totals.totalActual - totals.totalBudget)) }}
-                  </th>
-                  <th class="text-right">100%</th>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        </div>
-      </template>
     </div>
   </AppLayout>
 </template>
@@ -560,421 +358,209 @@ onMounted(() => {
 <style scoped>
 .content-container {
   background-color: white;
-  padding: 2rem;
+  padding: 1rem 2rem;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.filter-container {
-  margin-bottom: 2rem;
-}
-
-.filter-header {
-  display: flex;
-  align-items: center;
+.content-container h2 {
+  color: #111827;
+  margin-top: 0;
   margin-bottom: 1rem;
 }
 
-.filter-header .card-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
+.content-container p {
+  color: #6b7280;
+  line-height: 1.5;
 }
 
-.filter-header .card-title i {
-  margin-right: 0.5rem;
+/* Filter styles */
+.filter-container {
+  margin-top: 1.5rem;
+  margin-bottom: 2rem;
+  background-color: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.filter-header {
+  padding: 1rem;
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .filter-content {
-  display: flex;
-  flex-direction: column;
+  padding: 1.5rem;
 }
 
 .filter-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1rem;
 }
 
-.filter-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 1rem;
+.form-group {
+  margin-bottom: 1rem;
 }
 
-.view-toggle {
-  display: flex;
-  border: 1px solid #e5e7eb;
-  border-radius: 4px;
-  overflow: hidden;
+.form-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: #374151;
 }
 
-.toggle-btn {
-  flex: 1;
+.form-select {
+  width: 100%;
   padding: 0.5rem;
-  border: none;
-  background-color: #f9fafb;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-}
-
-.toggle-btn.active {
-  background-color: #3b82f6;
-  color: white;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
 }
 
 .btn-primary {
-  background-color: #3b82f6;
-  color: white;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
   padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 4px;
+  border-radius: 0.375rem;
+  border: 1px solid #2563eb;
+  background-color: #2563eb;
+  color: white;
+  font-weight: 500;
   cursor: pointer;
+  transition: all 0.2s;
 }
 
-.btn-primary i {
-  margin-right: 0.5rem;
+.btn-primary:hover {
+  background-color: #1d4ed8;
+  border-color: #1d4ed8;
 }
 
-.card-empty-state {
+/* Report styles */
+.report-container {
+  margin-top: 2rem;
+}
+
+.report-section-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 0.25rem;
+}
+
+.report-section-subtitle {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin-bottom: 1.5rem;
+}
+
+/* Tab navigation */
+.report-tabs {
+  margin-bottom: 1rem;
+}
+
+.tab-container {
+  display: flex;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.tab-button {
+  padding: 0.75rem 1.5rem;
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  color: #6b7280;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.tab-button:hover {
+  color: #4b5563;
+}
+
+.tab-button.active {
+  color: #2563eb;
+  border-bottom: 2px solid #2563eb;
+}
+
+/* Report table styles */
+.report-table-container {
+  overflow-x: auto;
+  margin-bottom: 2rem;
+}
+
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.report-table th,
+.report-table td {
+  border: 1px solid #e5e7eb;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+
+.report-table th {
+  background-color: #f3f4f6;
+  font-weight: 600;
+  color: #374151;
+}
+
+.report-table tbody tr:nth-child(even) {
+  background-color: #f9fafb;
+}
+
+.report-table tbody tr:hover {
+  background-color: #f3f4f6;
+}
+
+.report-table tfoot {
+  font-weight: 600;
+}
+
+/* Loading, error, and no data states */
+.loading-spinner-container,
+.error-message,
+.no-data {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 2rem;
-  background-color: #f9fafb;
-  border: 1px dashed #d1d5db;
-  border-radius: 6px;
+  padding: 4rem 0;
   text-align: center;
 }
 
-.card-empty-state.error {
-  background-color: #fee2e2;
-  border-color: #fca5a5;
-}
-
-.card-empty-state .loading-spinner {
-  width: 2rem;
-  height: 2rem;
-  border: 4px solid #d1d5db;
-  border-top: 4px solid #3b82f6;
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  margin-bottom: 1rem;
+  border: 4px solid #e5e7eb;
   border-radius: 50%;
+  border-top-color: #3b82f6;
   animation: spin 1s linear infinite;
-  margin-bottom: 1rem;
-}
-
-.card-empty-state .error-icon {
-  font-size: 2rem;
-  color: #ef4444;
-  margin-bottom: 1rem;
-}
-
-.card-empty-state .empty-icon {
-  font-size: 2rem;
-  color: #6b7280;
-  margin-bottom: 1rem;
-}
-
-.report-header {
-  margin-bottom: 1.5rem;
-  text-align: center;
-}
-
-.report-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin-bottom: 0.25rem;
-  color: #1f2937;
-}
-
-.report-subtitle {
-  font-size: 1.25rem;
-  font-weight: 500;
-  color: #4b5563;
-}
-
-.kpi-cards {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
-  margin-bottom: 2rem;
-}
-
-.kpi-card {
-  padding: 1.5rem;
-  background-color: #f9fafb;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.kpi-title {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #6b7280;
-  margin-bottom: 0.5rem;
-}
-
-.kpi-value {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #1f2937;
-  margin-bottom: 0.5rem;
-}
-
-.kpi-comparison {
-  font-size: 0.875rem;
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  margin-bottom: 0.25rem;
-}
-
-.kpi-comparison.positive {
-  color: #10b981;
-}
-
-.kpi-comparison.negative {
-  color: #ef4444;
-}
-
-.kpi-detail {
-  font-size: 0.875rem;
-  color: #6b7280;
-}
-
-.visualization-section, 
-.table-section {
-  margin-top: 2rem;
-}
-
-.chart-container {
-  background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
-  padding: 1rem;
-}
-
-.chart-header {
-  padding: 1rem;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.chart-title {
-  margin: 0;
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: #374151;
-}
-
-.chart-body {
-  padding: 1rem;
-  height: 400px;
-}
-
-.table-container {
-  overflow-x: auto;
-}
-
-.categories-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.categories-table th, 
-.categories-table td {
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.categories-table th {
-  background-color: #f9fafb;
-  font-weight: 600;
-  color: #374151;
-  text-align: left;
-}
-
-.categories-table tfoot th {
-  background-color: #f3f4f6;
-  font-weight: 700;
-}
-
-.text-right {
-  text-align: right;
-}
-
-.category-name {
-  font-weight: 500;
-}
-
-.positive {
-  color: #10b981;
-}
-
-.negative {
-  color: #ef4444;
 }
 
 @keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
+.error-message {
+  color: #dc2626;
+}
+
+.error-message i,
+.no-data i {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+}
+
+/* Responsive adjustments */
 @media (max-width: 768px) {
   .filter-grid {
     grid-template-columns: 1fr;
   }
-  
-  .kpi-cards {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* Add new styles for monthly-table */
-.section-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #374151;
-  margin-bottom: 1rem;
-}
-
-.monthly-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.monthly-table th, 
-.monthly-table td {
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.monthly-table th {
-  background-color: #f9fafb;
-  font-weight: 600;
-  color: #374151;
-  text-align: left;
-}
-
-.monthly-table tfoot th {
-  background-color: #f3f4f6;
-  font-weight: 700;
-}
-
-.month-name {
-  font-weight: 500;
-}
-
-/* Add new styles for month-detail-section */
-.month-detail-section {
-  margin-top: 2rem;
-  padding-top: 1rem;
-  border-top: 1px dashed #e5e7eb;
-}
-
-.month-title {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #374151;
-  margin-bottom: 0.75rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.month-total {
-  font-size: 0.9rem;
-  color: #6b7280;
-}
-
-.month-categories-table {
-  margin-bottom: 0;
-}
-
-.month-categories-table th {
-  font-size: 0.9rem;
-}
-
-.month-categories-table td {
-  font-size: 0.9rem;
-}
-
-/* Thêm nút hiển thị/ẩn chi tiết từng tháng */
-.toggle-month-details {
-  margin-top: 1rem;
-  margin-bottom: 1rem;
-  text-align: center;
-}
-
-.toggle-details-btn {
-  padding: 0.5rem 1rem;
-  background-color: #f3f4f6;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  font-size: 0.9rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  margin: 0 auto;
-}
-
-.toggle-details-btn i {
-  margin-right: 0.5rem;
-}
-
-.toggle-details-btn:hover {
-  background-color: #e5e7eb;
-}
-
-/* Thêm styles mới */
-.clickable {
-  cursor: pointer;
-}
-
-.month-title:hover {
-  background-color: #f9fafb;
-}
-
-/* Màu xen kẽ cho các tháng */
-.month-detail-section:nth-child(odd) {
-  background-color: #f9fafb;
-}
-
-/* Thêm màu sắc cho các tháng để phân biệt */
-.month-title {
-  border-left: 4px solid;
-  padding-left: 0.5rem;
-}
-
-.month-detail-section:nth-child(1) .month-title,
-.month-detail-section:nth-child(5) .month-title,
-.month-detail-section:nth-child(9) .month-title {
-  border-color: #3b82f6; /* blue */
-}
-
-.month-detail-section:nth-child(2) .month-title,
-.month-detail-section:nth-child(6) .month-title,
-.month-detail-section:nth-child(10) .month-title {
-  border-color: #10b981; /* green */
-}
-
-.month-detail-section:nth-child(3) .month-title,
-.month-detail-section:nth-child(7) .month-title,
-.month-detail-section:nth-child(11) .month-title {
-  border-color: #f59e0b; /* amber */
-}
-
-.month-detail-section:nth-child(4) .month-title,
-.month-detail-section:nth-child(8) .month-title,
-.month-detail-section:nth-child(12) .month-title {
-  border-color: #ef4444; /* red */
 }
 </style>
