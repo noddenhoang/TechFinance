@@ -1,22 +1,34 @@
 package com.techzenacademy.TechFinance.service.impl;
 
-import com.techzenacademy.TechFinance.dto.*;
-import com.techzenacademy.TechFinance.entity.ExpenseTransaction;
-import com.techzenacademy.TechFinance.entity.IncomeTransaction;
-import com.techzenacademy.TechFinance.repository.ExpenseTransactionRepository;
-import com.techzenacademy.TechFinance.repository.IncomeTransactionRepository;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.Period;
 import java.time.YearMonth;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import com.techzenacademy.TechFinance.dto.AgedPayableDTO;
+import com.techzenacademy.TechFinance.dto.AgedReceivableDTO;
+import com.techzenacademy.TechFinance.dto.PayableDetailDTO;
+import com.techzenacademy.TechFinance.dto.ReceivableDetailDTO;
+import com.techzenacademy.TechFinance.dto.ReceivablePayableDTO;
+import com.techzenacademy.TechFinance.dto.ReceivablePayableReportDTO;
+import com.techzenacademy.TechFinance.dto.TransactionErrorDTO;
+import com.techzenacademy.TechFinance.entity.ExpenseTransaction;
+import com.techzenacademy.TechFinance.entity.IncomeTransaction;
+import com.techzenacademy.TechFinance.repository.ExpenseTransactionRepository;
+import com.techzenacademy.TechFinance.repository.IncomeTransactionRepository;
+
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 
 @Service
 public class ReceivablePayableService {
@@ -29,6 +41,120 @@ public class ReceivablePayableService {
 
     @PersistenceContext
     private EntityManager entityManager;
+
+    /**
+     * Retrieves simplified receivable and payable summary data for chart display
+     * @param year Optional year filter
+     * @param month Optional month filter
+     * @return DTO containing receivable and payable data for charts
+     */
+    public ReceivablePayableDTO getReceivablePayableChartData(Integer year, Integer month) {
+        LocalDate startDate = null;
+        LocalDate endDate = null;
+        
+        // Set date filters if year is provided
+        if (year != null) {
+            if (month != null) {
+                // Year and month specified
+                startDate = LocalDate.of(year, month, 1);
+                endDate = startDate.plusMonths(1).minusDays(1);
+            } else {
+                // Only year specified
+                startDate = LocalDate.of(year, 1, 1);
+                endDate = LocalDate.of(year, 12, 31);
+            }
+        }
+        
+        // Get transactions based on date filters
+        List<IncomeTransaction> incomeTransactions;
+        List<ExpenseTransaction> expenseTransactions;
+        
+        if (startDate != null && endDate != null) {
+            incomeTransactions = incomeTransactionRepository.findByTransactionDateBetweenOrderByTransactionDateDesc(startDate, endDate);
+            expenseTransactions = expenseTransactionRepository.findByTransactionDateBetweenOrderByTransactionDateDesc(startDate, endDate);
+        } else {
+            // Get all transactions if no date filter
+            incomeTransactions = incomeTransactionRepository.findAll();
+            expenseTransactions = expenseTransactionRepository.findAll();
+        }
+        
+        // Calculate receivable summaries
+        BigDecimal totalReceived = incomeTransactions.stream()
+                .filter(it -> it.getPaymentStatus() == IncomeTransaction.PaymentStatus.RECEIVED)
+                .map(IncomeTransaction::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                
+        BigDecimal totalPending = incomeTransactions.stream()
+                .filter(it -> it.getPaymentStatus() == IncomeTransaction.PaymentStatus.PENDING)
+                .map(IncomeTransaction::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        
+        // Calculate payable summaries
+        BigDecimal totalPaid = expenseTransactions.stream()
+                .filter(et -> et.getPaymentStatus() == ExpenseTransaction.PaymentStatus.PAID)
+                .map(ExpenseTransaction::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                
+        BigDecimal totalUnpaid = expenseTransactions.stream()
+                .filter(et -> et.getPaymentStatus() == ExpenseTransaction.PaymentStatus.UNPAID)
+                .map(ExpenseTransaction::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        
+        // Calculate monthly data for charts
+        List<ReceivablePayableDTO.MonthlyDataDTO> receivablesByMonth = calculateMonthlyChartData(incomeTransactions, true);
+        List<ReceivablePayableDTO.MonthlyDataDTO> payablesByMonth = calculateMonthlyChartData(expenseTransactions, false);
+        
+        // Build the response DTO
+        return ReceivablePayableDTO.builder()
+                .totalReceived(totalReceived)
+                .totalPending(totalPending)
+                .totalReceivable(totalReceived.add(totalPending))
+                .totalPaid(totalPaid)
+                .totalUnpaid(totalUnpaid)
+                .totalPayable(totalPaid.add(totalUnpaid))
+                .receivablesByMonth(receivablesByMonth)
+                .payablesByMonth(payablesByMonth)
+                .build();
+    }
+    
+    private <T> List<ReceivablePayableDTO.MonthlyDataDTO> calculateMonthlyChartData(List<T> transactions, boolean isIncome) {
+        // Map to store monthly totals
+        Map<Integer, BigDecimal> monthlyAmounts = new HashMap<>();
+        
+        // Initialize all months with zero
+        for (int i = 1; i <= 12; i++) {
+            monthlyAmounts.put(i, BigDecimal.ZERO);
+        }
+        
+        // Calculate totals by month
+        if (isIncome) {
+            for (T transaction : transactions) {
+                IncomeTransaction it = (IncomeTransaction) transaction;
+                if (it.getPaymentStatus() == IncomeTransaction.PaymentStatus.PENDING) {
+                    int month = it.getTransactionDate().getMonthValue();
+                    BigDecimal currentAmount = monthlyAmounts.get(month);
+                    monthlyAmounts.put(month, currentAmount.add(it.getAmount()));
+                }
+            }
+        } else {
+            for (T transaction : transactions) {
+                ExpenseTransaction et = (ExpenseTransaction) transaction;
+                if (et.getPaymentStatus() == ExpenseTransaction.PaymentStatus.UNPAID) {
+                    int month = et.getTransactionDate().getMonthValue();
+                    BigDecimal currentAmount = monthlyAmounts.get(month);
+                    monthlyAmounts.put(month, currentAmount.add(et.getAmount()));
+                }
+            }
+        }
+        
+        // Convert map to list of DTOs
+        return monthlyAmounts.entrySet().stream()
+                .map(entry -> ReceivablePayableDTO.MonthlyDataDTO.builder()
+                        .month(entry.getKey())
+                        .amount(entry.getValue())
+                        .build())
+                .collect(Collectors.toList());
+    }
 
     /**
      * Lấy báo cáo tiền phải thu, phải trả theo tháng và năm
