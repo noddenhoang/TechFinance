@@ -57,7 +57,9 @@ const loadData = async () => {
   try {
     data.value = await budgetOverview.getBudgetOverview(filters.year, filters.month);
     nextTick(() => {
-      updateCharts();
+      setTimeout(() => {
+        updateCharts();
+      }, 100); // Small delay to ensure DOM is ready
     });
   } catch (err) {
     console.error('Error loading budget overview:', err);
@@ -77,84 +79,108 @@ const loadData = async () => {
 const updateCharts = () => {
   if (!data.value) return;
   
-  // Destroy existing charts
-  if (incomeChart.value) {
-    incomeChart.value.destroy();
-  }
-  
-  if (expenseChart.value) {
-    expenseChart.value.destroy();
-  }
-  
-  // Setup income chart
-  const incomeCtx = document.getElementById('incomeChart');
-  if (incomeCtx) {
-    incomeChart.value = new Chart(incomeCtx, {
-      type: 'bar',
-      data: {
-        labels: data.value.income.monthlyData.map(m => getMonthName(m.month)),
-        datasets: [{
-          label: 'Thu nhập thực tế',
-          data: data.value.income.monthlyData.map(m => m.actual),
-          backgroundColor: 'rgba(79, 70, 229, 0.7)',
-          borderColor: 'rgba(79, 70, 229, 1)',
-          borderWidth: 1
-        }]
-      },
-      options: {
-        scales: {
-          y: {
-            beginAtZero: true,
-            ticks: {
-              callback: (value) => {
-                if (value >= 1000000) {
-                  return (value / 1000000).toFixed(0) + ' tr';
-                }
-                return value;
-              }
-            }
-          }
-        },
-        responsive: true,
-        maintainAspectRatio: false
+  nextTick(() => {
+    try {
+      // Destroy existing charts
+      if (incomeChart.value) {
+        incomeChart.value.destroy();
       }
-    });
-  }
-  
-  // Setup expense chart
-  const expenseCtx = document.getElementById('expenseChart');
-  if (expenseCtx) {
-    expenseChart.value = new Chart(expenseCtx, {
-      type: 'bar',
-      data: {
-        labels: data.value.expense.monthlyData.map(m => getMonthName(m.month)),
-        datasets: [{
-          label: 'Chi phí thực tế',
-          data: data.value.expense.monthlyData.map(m => m.actual),
-          backgroundColor: 'rgba(239, 68, 68, 0.7)',
-          borderColor: 'rgba(239, 68, 68, 1)',
-          borderWidth: 1
-        }]
-      },
-      options: {
-        scales: {
-          y: {
-            beginAtZero: true,
-            ticks: {
-              callback: (value) => {
-                if (value >= 1000000) {
-                  return (value / 1000000).toFixed(0) + ' tr';
-                }
-                return value;
-              }
-            }
-          }
-        },
-        responsive: true,
-        maintainAspectRatio: false
+      
+      if (expenseChart.value) {
+        expenseChart.value.destroy();
       }
-    });
-  }
+      
+      // Setup income chart
+      const incomeCtx = document.getElementById('incomeChart');
+      if (incomeCtx) {
+        console.log('Initializing income chart');
+        incomeChart.value = new Chart(incomeCtx, {
+          type: 'bar',
+          data: {
+            labels: data.value.income.monthlyData.map(m => getMonthName(m.month)),
+            datasets: [{
+              label: 'Thu nhập thực tế',
+              data: data.value.income.monthlyData.map(m => m.actual),
+              backgroundColor: 'rgba(79, 70, 229, 0.7)',
+              borderColor: 'rgba(79, 70, 229, 1)',
+              borderWidth: 1
+            }, {
+              label: 'Tổng thu nhập kế hoạch',
+              data: data.value.income.monthlyData.map(m => m.budget),
+              backgroundColor: 'rgba(59, 130, 246, 0.5)',
+              borderColor: 'rgba(59, 130, 246, 1)',
+              borderWidth: 1
+            }]
+          },
+          options: {
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: {
+                  callback: (value) => {
+                    if (value >= 1000000) {
+                      return (value / 1000000).toFixed(0) + ' tr';
+                    }
+                    return value;
+                  }
+                }
+              }
+            },
+            responsive: true,
+            maintainAspectRatio: false
+          }
+        });
+      } else {
+        console.error('Income chart element not found');
+      }
+      
+      // Setup expense chart
+      const expenseCtx = document.getElementById('expenseChart');
+      if (expenseCtx) {
+        console.log('Initializing expense chart');
+        expenseChart.value = new Chart(expenseCtx, {
+          type: 'bar',
+          data: {
+            labels: data.value.expense.monthlyData.map(m => getMonthName(m.month)),
+            datasets: [{
+              label: 'Chi phí thực tế',
+              data: data.value.expense.monthlyData.map(m => m.actual),
+              backgroundColor: 'rgba(239, 68, 68, 0.7)',
+              borderColor: 'rgba(239, 68, 68, 1)',
+              borderWidth: 1
+            }, {
+              label: 'Tổng chi phí kế hoạch',
+              data: data.value.expense.monthlyData.map(m => m.budget),
+              backgroundColor: 'rgba(248, 113, 113, 0.5)',
+              borderColor: 'rgba(248, 113, 113, 1)',
+              borderWidth: 1
+            }]
+          },
+          options: {
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: {
+                  callback: (value) => {
+                    if (value >= 1000000) {
+                      return (value / 1000000).toFixed(0) + ' tr';
+                    }
+                    return value;
+                  }
+                }
+              }
+            },
+            responsive: true,
+            maintainAspectRatio: false
+          }
+        });
+      } else {
+        console.error('Expense chart element not found');
+      }
+    } catch (err) {
+      console.error('Error initializing charts:', err);
+    }
+  });
 };
 
 // Get the data for the current month tables
@@ -267,7 +293,7 @@ onMounted(() => {
             
             <!-- Income Chart -->
             <div class="chart-container">
-              <canvas id="incomeChart" height="200"></canvas>
+              <canvas id="incomeChart" height="300"></canvas>
             </div>
             
             <!-- Income Monthly Data Table -->
@@ -347,7 +373,7 @@ onMounted(() => {
             
             <!-- Expense Chart -->
             <div class="chart-container">
-              <canvas id="expenseChart" height="200"></canvas>
+              <canvas id="expenseChart" height="300"></canvas>
             </div>
             
             <!-- Expense Monthly Data Table -->
@@ -501,9 +527,11 @@ h2 {
 }
 
 .chart-container {
-  height: 200px;
+  height: 300px;
   padding: 1rem;
   border-top: 1px solid #e5e7eb;
+  margin-bottom: 1rem;
+  position: relative;
 }
 
 .monthly-table-container {
