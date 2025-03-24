@@ -60,11 +60,11 @@ public class BudgetOverviewService {
     private Map<String, Object> getIncomeBudgetOverview(Integer year, Integer month) {
         Map<String, Object> incomeData = new HashMap<>();
         
-        // Tổng ngân sách thu nhập
-        BigDecimal totalBudget = calculateTotalIncomeBudget(year, month);
+        // Tổng ngân sách thu nhập (tất cả giao dịch, cả đã thanh toán và chưa thanh toán)
+        BigDecimal totalBudget = calculateTotalIncomeActual(year, month);
         
-        // Tổng thu nhập thực tế
-        BigDecimal totalActual = calculateTotalIncomeActual(year, month);
+        // Tổng thu nhập thực tế (chỉ tính các khoản đã thanh toán)
+        BigDecimal totalActual = calculateTotalIncomeActualPaid(year, month);
         
         // Chênh lệch
         BigDecimal difference = totalActual.subtract(totalBudget);
@@ -99,11 +99,11 @@ public class BudgetOverviewService {
     private Map<String, Object> getExpenseBudgetOverview(Integer year, Integer month) {
         Map<String, Object> expenseData = new HashMap<>();
         
-        // Tổng ngân sách chi tiêu
-        BigDecimal totalBudget = calculateTotalExpenseBudget(year, month);
+        // Tổng ngân sách chi tiêu (tất cả giao dịch, cả đã thanh toán và chưa thanh toán)
+        BigDecimal totalBudget = calculateTotalExpenseActual(year, month);
         
-        // Tổng chi tiêu thực tế
-        BigDecimal totalActual = calculateTotalExpenseActual(year, month);
+        // Tổng chi tiêu thực tế (chỉ tính các khoản đã thanh toán)
+        BigDecimal totalActual = calculateTotalExpenseActualPaid(year, month);
         
         // Chênh lệch
         BigDecimal difference = totalBudget.subtract(totalActual);
@@ -133,9 +133,10 @@ public class BudgetOverviewService {
     }
     
     /**
-     * Tính tổng ngân sách thu nhập
+     * Tính tổng ngân sách thu nhập dựa trên kế hoạch
+     * (Không sử dụng trong tổng quan hiện tại)
      */
-    private BigDecimal calculateTotalIncomeBudget(Integer year, Integer month) {
+    private BigDecimal calculateTotalIncomeBudgetPlanned(Integer year, Integer month) {
         List<IncomeBudget> budgets;
         if (month != null) {
             // Tổng ngân sách cho một tháng cụ thể
@@ -151,7 +152,7 @@ public class BudgetOverviewService {
     }
     
     /**
-     * Tính tổng thu nhập thực tế
+     * Tính tổng thu nhập thực tế (tất cả các giao dịch)
      */
     private BigDecimal calculateTotalIncomeActual(Integer year, Integer month) {
         LocalDate startDate;
@@ -174,9 +175,34 @@ public class BudgetOverviewService {
     }
     
     /**
-     * Tính tổng ngân sách chi tiêu
+     * Tính tổng thu nhập thực tế (chỉ các giao dịch đã thanh toán)
      */
-    private BigDecimal calculateTotalExpenseBudget(Integer year, Integer month) {
+    private BigDecimal calculateTotalIncomeActualPaid(Integer year, Integer month) {
+        LocalDate startDate;
+        LocalDate endDate;
+        
+        if (month != null) {
+            // Chỉ tính cho một tháng cụ thể
+            startDate = LocalDate.of(year, month, 1);
+            endDate = startDate.plusMonths(1).minusDays(1);
+        } else {
+            // Tính cho cả năm
+            startDate = LocalDate.of(year, 1, 1);
+            endDate = LocalDate.of(year, 12, 31);
+        }
+        
+        List<IncomeTransaction> transactions = incomeTransactionRepository.findByTransactionDateBetweenOrderByTransactionDateDesc(startDate, endDate);
+        return transactions.stream()
+            .filter(transaction -> transaction.getPaymentStatus() == IncomeTransaction.PaymentStatus.RECEIVED)
+            .map(IncomeTransaction::getAmount)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+    
+    /**
+     * Tính tổng ngân sách chi tiêu dựa trên kế hoạch
+     * (Không sử dụng trong tổng quan hiện tại)
+     */
+    private BigDecimal calculateTotalExpenseBudgetPlanned(Integer year, Integer month) {
         List<ExpenseBudget> budgets;
         if (month != null) {
             // Tổng ngân sách cho một tháng cụ thể
@@ -192,7 +218,7 @@ public class BudgetOverviewService {
     }
     
     /**
-     * Tính tổng chi tiêu thực tế
+     * Tính tổng chi tiêu thực tế (tất cả các giao dịch)
      */
     private BigDecimal calculateTotalExpenseActual(Integer year, Integer month) {
         LocalDate startDate;
@@ -215,6 +241,30 @@ public class BudgetOverviewService {
     }
     
     /**
+     * Tính tổng chi tiêu thực tế (chỉ các giao dịch đã thanh toán)
+     */
+    private BigDecimal calculateTotalExpenseActualPaid(Integer year, Integer month) {
+        LocalDate startDate;
+        LocalDate endDate;
+        
+        if (month != null) {
+            // Chỉ tính cho một tháng cụ thể
+            startDate = LocalDate.of(year, month, 1);
+            endDate = startDate.plusMonths(1).minusDays(1);
+        } else {
+            // Tính cho cả năm
+            startDate = LocalDate.of(year, 1, 1);
+            endDate = LocalDate.of(year, 12, 31);
+        }
+        
+        List<ExpenseTransaction> transactions = expenseTransactionRepository.findByTransactionDateBetweenOrderByTransactionDateDesc(startDate, endDate);
+        return transactions.stream()
+            .filter(transaction -> transaction.getPaymentStatus() == ExpenseTransaction.PaymentStatus.PAID)
+            .map(ExpenseTransaction::getAmount)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+    
+    /**
      * Lấy dữ liệu thu nhập theo tháng cho biểu đồ
      */
     private List<Map<String, Object>> getMonthlyIncomeData(Integer year) {
@@ -223,9 +273,9 @@ public class BudgetOverviewService {
         for (int month = 1; month <= 12; month++) {
             Map<String, Object> monthData = new HashMap<>();
             
-            // Tính ngân sách và thu nhập thực tế cho tháng này
-            BigDecimal budget = calculateTotalIncomeBudget(year, month);
-            BigDecimal actual = calculateTotalIncomeActual(year, month);
+            // Tính ngân sách (tất cả giao dịch) và thu nhập thực tế (chỉ đã thanh toán) cho tháng này
+            BigDecimal budget = calculateTotalIncomeActual(year, month);
+            BigDecimal actual = calculateTotalIncomeActualPaid(year, month);
             BigDecimal difference = actual.subtract(budget);
             double percentage = 0;
             if (budget.compareTo(BigDecimal.ZERO) > 0) {
@@ -259,9 +309,9 @@ public class BudgetOverviewService {
         for (int month = 1; month <= 12; month++) {
             Map<String, Object> monthData = new HashMap<>();
             
-            // Tính ngân sách và chi tiêu thực tế cho tháng này
-            BigDecimal budget = calculateTotalExpenseBudget(year, month);
-            BigDecimal actual = calculateTotalExpenseActual(year, month);
+            // Tính ngân sách (tất cả giao dịch) và chi tiêu thực tế (chỉ đã thanh toán) cho tháng này
+            BigDecimal budget = calculateTotalExpenseActual(year, month);
+            BigDecimal actual = calculateTotalExpenseActualPaid(year, month);
             BigDecimal difference = budget.subtract(actual);
             double percentage = 0;
             if (budget.compareTo(BigDecimal.ZERO) > 0) {

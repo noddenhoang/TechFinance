@@ -242,7 +242,7 @@ onMounted(() => {
                   }">
                     <div class="progress-center">
                       <span class="progress-percentage">{{ formatPercentage(data.income.percentage) }}</span>
-                      <span class="progress-label">Thu/Ngân sách</span>
+                      <span class="progress-label">Đã nhận/Kế hoạch</span>
                     </div>
                   </div>
                 </div>
@@ -251,11 +251,11 @@ onMounted(() => {
               <!-- Budget Data Table -->
               <div class="budget-data-table">
                 <div class="budget-data-row">
-                  <span class="budget-data-label">Thu nhập ngân sách</span>
+                  <span class="budget-data-label">Tổng thu nhập kế hoạch</span>
                   <span class="budget-data-value">{{ formatCurrency(data.income.totalBudget) }}</span>
                 </div>
                 <div class="budget-data-row">
-                  <span class="budget-data-label">Thu nhập thực tế</span>
+                  <span class="budget-data-label">Tổng thu nhập đã nhận</span>
                   <span class="budget-data-value">{{ formatCurrency(data.income.totalActual) }}</span>
                 </div>
                 <div class="budget-data-row">
@@ -322,7 +322,7 @@ onMounted(() => {
                   }">
                     <div class="progress-center">
                       <span class="progress-percentage">{{ formatPercentage(data.expense.percentage) }}</span>
-                      <span class="progress-label">Chi phí / Dự chi</span>
+                      <span class="progress-label">Đã trả/Kế hoạch</span>
                     </div>
                   </div>
                 </div>
@@ -331,11 +331,11 @@ onMounted(() => {
               <!-- Budget Data Table -->
               <div class="budget-data-table">
                 <div class="budget-data-row">
-                  <span class="budget-data-label">Chi phí ngân sách</span>
+                  <span class="budget-data-label">Tổng chi phí kế hoạch</span>
                   <span class="budget-data-value">{{ formatCurrency(data.expense.totalBudget) }}</span>
                 </div>
                 <div class="budget-data-row">
-                  <span class="budget-data-label">Chi phí thực tế</span>
+                  <span class="budget-data-label">Tổng chi phí đã thanh toán</span>
                   <span class="budget-data-value">{{ formatCurrency(data.expense.totalActual) }}</span>
                 </div>
                 <div class="budget-data-row">
