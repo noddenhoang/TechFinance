@@ -24,7 +24,7 @@ const loadData = async () => {
   
   try {
     // Always load yearly data for the enhanced UI
-    reportData.value = await financialReports.getYearlyReport(filters.year);
+      reportData.value = await financialReports.getYearlyReport(filters.year);
   } catch (err) {
     console.error('Error loading report data:', err);
     error.value = 'Không thể tải dữ liệu báo cáo. Vui lòng thử lại sau.';
@@ -224,7 +224,7 @@ onMounted(() => {
         <!-- Report header -->
         <h2 class="report-section-title">
           {{ filters.reportType === 'income' ? '8.4. Thu nhập theo danh mục' : '8.5. Chi phí theo danh mục' }}
-        </h2>
+          </h2>
         <p class="report-section-subtitle">Thông tin được sắp xếp theo tổng {{ filters.reportType === 'income' ? 'thu nhập' : 'chi phí' }} năm {{ filters.year }}</p>
         
         <!-- Tab navigation -->
@@ -250,15 +250,15 @@ onMounted(() => {
         <!-- Monthly view table -->
         <div v-if="activeTab === 'month'" class="report-table-container">
           <table class="report-table">
-            <thead>
-              <tr>
+              <thead>
+                <tr>
                 <th>Danh mục</th>
                 <th v-for="month in 12" :key="month">T{{ month }}</th>
                 <th>Tổng năm</th>
                 <th>%</th>
-              </tr>
-            </thead>
-            <tbody>
+                </tr>
+              </thead>
+              <tbody>
               <tr v-for="category in categories" :key="category.categoryId">
                 <td>{{ category.categoryName }}</td>
                 <!-- Monthly amounts -->
@@ -269,11 +269,11 @@ onMounted(() => {
                 </template>
                 <td>{{ formatCurrency(category.actualAmount) }}</td>
                 <td>{{ formatPercentage(category.percentageOfTotal) }}</td>
-              </tr>
-            </tbody>
-            <tfoot>
-              <tr>
-                <th>Tổng cộng</th>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th>Tổng cộng</th>
                 <!-- Monthly totals -->
                 <template v-for="month in 12" :key="month">
                   <th>
@@ -282,27 +282,27 @@ onMounted(() => {
                 </template>
                 <th>{{ formatCurrency(calculateTotalAmount()) }}</th>
                 <th>100%</th>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-        
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          
         <!-- Quarterly view table -->
         <div v-if="activeTab === 'quarter'" class="report-table-container">
           <table class="report-table">
-            <thead>
-              <tr>
-                <th>Danh mục</th>
+                  <thead>
+                    <tr>
+                      <th>Danh mục</th>
                 <th>Q1</th>
                 <th>Q2</th>
                 <th>Q3</th>
                 <th>Q4</th>
                 <th>Tổng năm</th>
                 <th>%</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="category in categories" :key="category.categoryId">
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="category in categories" :key="category.categoryId">
                 <td>{{ category.categoryName }}</td>
                 <!-- Quarterly amounts -->
                 <template v-for="quarter in 4" :key="quarter">
@@ -312,11 +312,11 @@ onMounted(() => {
                 </template>
                 <td>{{ formatCurrency(category.actualAmount) }}</td>
                 <td>{{ formatPercentage(category.percentageOfTotal) }}</td>
-              </tr>
-            </tbody>
-            <tfoot>
-              <tr>
-                <th>Tổng cộng</th>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th>Tổng cộng</th>
                 <!-- Quarterly totals -->
                 <template v-for="quarter in 4" :key="quarter">
                   <th>
@@ -325,11 +325,11 @@ onMounted(() => {
                 </template>
                 <th>{{ formatCurrency(calculateTotalAmount()) }}</th>
                 <th>100%</th>
-              </tr>
-            </tfoot>
-          </table>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
         </div>
-      </div>
       
       <!-- Loading indicator -->
       <div v-if="isLoading" class="loading-spinner-container">

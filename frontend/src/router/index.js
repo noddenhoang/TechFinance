@@ -75,6 +75,12 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/budget-overview',
+    name: 'BudgetOverview',
+    component: () => import('../views/reports/BudgetOverviewView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/category-reports',
     name: 'CategoryReports',
     component: () => import('../views/reports/CategoryReportsView.vue'),

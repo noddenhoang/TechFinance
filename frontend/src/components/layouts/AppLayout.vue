@@ -118,6 +118,12 @@ const toggleSidebar = () => {
               </router-link>
             </li>
             <li class="nav-item">
+              <router-link to="/budget-overview" class="nav-link">
+                <span class="nav-icon">💹</span>
+                <span class="nav-text">Tổng quan ngân sách</span>
+              </router-link>
+            </li>
+            <li class="nav-item">
               <router-link to="/category-reports" class="nav-link">
                 <span class="nav-icon">📊</span>
                 <span class="nav-text">Báo cáo theo danh mục</span>
