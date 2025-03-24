@@ -1,12 +1,15 @@
 <script setup>
-import { ref, reactive, onMounted, nextTick } from 'vue';
+import { ref, reactive, onMounted, nextTick, computed } from 'vue';
 import AppLayout from '../../components/layouts/AppLayout.vue';
 import { customerReports } from '../../api/customerReports';
 import { supplierReports } from '../../api/supplierReports';
 
+// Update the filters with a current year constant
+const currentYear = new Date().getFullYear();
+
 // Filters state - simplified to only report type
 const filters = reactive({
-  year: new Date().getFullYear(), // Always use current year
+  year: currentYear, // Use the constant
   reportType: 'customer' // 'customer' or 'supplier'
 });
 
@@ -17,6 +20,15 @@ const error = ref(null);
 
 // UI State
 const activeTab = ref('month'); // 'month' or 'quarter'
+
+// Add a years computed property to return years from 2020 to current
+const years = computed(() => {
+  const yearList = [];
+  for (let i = 2020; i <= currentYear; i++) {
+    yearList.push(i);
+  }
+  return yearList;
+});
 
 // Load report data
 const loadData = async () => {
@@ -188,6 +200,12 @@ onMounted(() => {
         <div class="filter-content">
           <div class="filter-grid">
             <div class="form-group">
+              <label class="form-label">Năm</label>
+              <select v-model="filters.year" class="form-select" @change="loadData">
+                <option v-for="year in years" :key="year" :value="year">{{ year }}</option>
+              </select>
+            </div>
+            <div class="form-group">
               <label class="form-label">Loại báo cáo</label>
               <select v-model="filters.reportType" class="form-select" @change="loadData">
                 <option value="customer">8.6. Thu nhập theo khách hàng</option>
@@ -196,6 +214,13 @@ onMounted(() => {
             </div>
           </div>
         </div>
+      </div>
+      
+      <!-- Remove the report header with year buttons section -->
+      <div class="report-header">
+        <h2 class="report-title">
+          {{ filters.reportType === 'customer' ? 'Báo cáo Khách Hàng' : 'Báo cáo Nhà Cung Cấp' }}
+        </h2>
       </div>
       
       <!-- Hiển thị báo cáo theo thiết kế mới -->
@@ -541,5 +566,31 @@ onMounted(() => {
   .filter-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* Add CSS for the year selector */
+.year-selector {
+  display: flex;
+  gap: 0.25rem;
+  margin-right: 1rem;
+}
+
+.year-button {
+  padding: 0.5rem 1rem;
+  background-color: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.year-button.active {
+  background-color: #2563eb;
+  color: white;
+  border-color: #2563eb;
+}
+
+.year-button:hover:not(.active) {
+  background-color: #e5e7eb;
 }
 </style> 

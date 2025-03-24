@@ -18,6 +18,15 @@ const filters = reactive({
   month: null, // If null, will load yearly data
 });
 
+// Computed years for dropdown (2020 to current year)
+const years = computed(() => {
+  const yearList = [];
+  for (let year = 2020; year <= currentYear + 1; year++) {
+    yearList.push(year);
+  }
+  return yearList;
+});
+
 // Helper function for formatting currency
 const formatCurrency = (value) => {
   if (!value && value !== 0) return '0 đ';
@@ -44,8 +53,8 @@ const getMonthName = (month) => {
 };
 
 // Change year and reload data
-const changeYear = (year) => {
-  filters.year = year;
+const changeYear = (event) => {
+  filters.year = parseInt(event.target.value);
   loadData();
 };
 
@@ -209,30 +218,21 @@ onMounted(() => {
     <div class="content-container">
       <h2>8.2. Tổng quan ngân sách</h2>
       
-      <!-- Year selection -->
-      <div class="filter-container">
-        <div class="year-selector">
-          <button 
-            class="year-button" 
-            :class="{ 'active': filters.year === currentYear - 1 }"
-            @click="changeYear(currentYear - 1)"
-          >
-            {{ currentYear - 1 }}
-          </button>
-          <button 
-            class="year-button" 
-            :class="{ 'active': filters.year === currentYear }"
-            @click="changeYear(currentYear)"
-          >
-            {{ currentYear }}
-          </button>
-          <button 
-            class="year-button" 
-            :class="{ 'active': filters.year === currentYear + 1 }"
-            @click="changeYear(currentYear + 1)"
-          >
-            {{ currentYear + 1 }}
-          </button>
+      <!-- Report Filters -->
+      <div class="report-filters">
+        <h3>Bộ lọc báo cáo</h3>
+        <div class="filter-row">
+          <div class="filter-group">
+            <label for="yearFilter">Năm:</label>
+            <select 
+              id="yearFilter" 
+              v-model="filters.year" 
+              @change="changeYear"
+              class="select-input"
+            >
+              <option v-for="year in years" :key="year" :value="year">{{ year }}</option>
+            </select>
+          </div>
         </div>
       </div>
       
@@ -673,33 +673,39 @@ h2 {
 }
 
 /* Add new styles */
-.filter-container {
-  margin-bottom: 2rem;
-  display: flex;
-  justify-content: center;
+.report-filters {
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
 }
 
-.year-selector {
+.report-filters h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: #374151;
+}
+
+.filter-row {
   display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
   gap: 0.5rem;
 }
 
-.year-button {
-  padding: 0.5rem 1rem;
-  background-color: #f3f4f6;
+.select-input {
+  padding: 0.5rem;
   border: 1px solid #d1d5db;
   border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.year-button.active {
-  background-color: #2563eb;
-  color: white;
-  border-color: #2563eb;
-}
-
-.year-button:hover:not(.active) {
-  background-color: #e5e7eb;
+  background-color: white;
+  min-width: 120px;
 }
 </style> 

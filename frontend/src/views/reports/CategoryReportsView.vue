@@ -5,9 +5,18 @@ import { financialReports } from '../../api/financialReports';
 
 // Simplified filters - only report type
 const filters = reactive({
-  year: new Date().getFullYear(), // Always use current year
+  year: new Date().getFullYear(),
   reportType: 'income' // 'income' or 'expense'
 });
+
+// Current year for filter selection
+const currentYear = new Date().getFullYear();
+
+// Change year and reload data
+const changeYear = (year) => {
+  filters.year = year;
+  loadData();
+};
 
 // Data state
 const reportData = ref(null);
@@ -182,6 +191,15 @@ const formatPercentage = (value) => {
   return `${Math.round(value)}%`;
 };
 
+// Change the years computed property to return years from 2020 to current
+const years = computed(() => {
+  const yearList = [];
+  for (let i = 2020; i <= currentYear; i++) {
+    yearList.push(i);
+  }
+  return yearList;
+});
+
 // Lifecycle
 onMounted(() => {
   // Đảm bảo DOM đã render trước khi tải dữ liệu
@@ -209,6 +227,12 @@ onMounted(() => {
         <div class="filter-content">
           <div class="filter-grid">
             <div class="form-group">
+              <label class="form-label">Năm</label>
+              <select v-model="filters.year" class="form-select" @change="loadData">
+                <option v-for="year in years" :key="year" :value="year">{{ year }}</option>
+              </select>
+            </div>
+            <div class="form-group">
               <label class="form-label">Loại báo cáo</label>
               <select v-model="filters.reportType" class="form-select" @change="loadData">
                 <option value="income">8.4. Thu nhập theo danh mục</option>
@@ -222,10 +246,11 @@ onMounted(() => {
       <!-- Report Container -->
       <div class="report-container" v-if="!isLoading && !error && reportData">
         <!-- Report header -->
-        <h2 class="report-section-title">
-          {{ filters.reportType === 'income' ? '8.4. Thu nhập theo danh mục' : '8.5. Chi phí theo danh mục' }}
+        <div class="report-header">
+          <h2 class="report-title">
+            {{ filters.reportType === 'income' ? 'Báo cáo Thu Nhập Theo Danh Mục' : 'Báo cáo Chi Phí Theo Danh Mục' }}
           </h2>
-        <p class="report-section-subtitle">Thông tin được sắp xếp theo tổng {{ filters.reportType === 'income' ? 'thu nhập' : 'chi phí' }} năm {{ filters.year }}</p>
+        </div>
         
         <!-- Tab navigation -->
         <div class="report-tabs">
@@ -441,20 +466,57 @@ onMounted(() => {
   margin-top: 2rem;
 }
 
-.report-section-title {
+.report-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.report-title {
   font-size: 1.5rem;
   font-weight: 600;
   color: #1f2937;
-  margin-bottom: 0.25rem;
 }
 
-.report-section-subtitle {
-  font-size: 0.875rem;
-  color: #6b7280;
-  margin-bottom: 1.5rem;
+.report-actions {
+  display: flex;
+  align-items: center;
 }
 
-/* Tab navigation */
+.filter-group {
+  margin-right: 1rem;
+}
+
+.year-selector {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.year-button {
+  padding: 0.5rem 1rem;
+  background-color: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.year-button.active {
+  background-color: #2563eb;
+  color: white;
+  border-color: #2563eb;
+}
+
+.year-button:hover:not(.active) {
+  background-color: #e5e7eb;
+}
+
+.button-group {
+  display: flex;
+  gap: 0.5rem;
+}
+
 .report-tabs {
   margin-bottom: 1rem;
 }
