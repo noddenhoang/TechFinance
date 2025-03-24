@@ -59,4 +59,17 @@ public class SupplierReportController {
         Map<String, Object> report = supplierReportService.generateQuarterlyReport(year, quarter);
         return ResponseEntity.ok(report);
     }
+    
+    @GetMapping("/yearly")
+    public ResponseEntity<Map<String, Object>> getYearlySupplierReport(
+            @RequestParam(name = "year", required = false) Integer year) {
+        
+        // Nếu không cung cấp năm, sử dụng năm hiện tại
+        if (year == null) {
+            year = LocalDate.now().getYear();
+        }
+        
+        Map<String, Object> report = supplierReportService.generateYearlyReport(year);
+        return ResponseEntity.ok(report);
+    }
 } 

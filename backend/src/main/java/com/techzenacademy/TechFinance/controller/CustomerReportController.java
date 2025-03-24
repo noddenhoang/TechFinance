@@ -59,4 +59,17 @@ public class CustomerReportController {
         Map<String, Object> report = customerReportService.generateQuarterlyReport(year, quarter);
         return ResponseEntity.ok(report);
     }
+    
+    @GetMapping("/yearly")
+    public ResponseEntity<Map<String, Object>> getYearlyCustomerReport(
+            @RequestParam(name = "year", required = false) Integer year) {
+        
+        // Nếu không cung cấp năm, sử dụng năm hiện tại
+        if (year == null) {
+            year = LocalDate.now().getYear();
+        }
+        
+        Map<String, Object> report = customerReportService.generateYearlyReport(year);
+        return ResponseEntity.ok(report);
+    }
 } 

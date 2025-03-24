@@ -1,16 +1,13 @@
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, reactive, onMounted, nextTick } from 'vue';
 import AppLayout from '../../components/layouts/AppLayout.vue';
 import { customerReports } from '../../api/customerReports';
 import { supplierReports } from '../../api/supplierReports';
 
-// Filters state
+// Filters state - simplified to only report type
 const filters = reactive({
-  year: new Date().getFullYear(),
-  timeFrame: 'month', // 'month', 'quarter'
-  month: new Date().getMonth() + 1,
-  quarter: Math.floor(new Date().getMonth() / 3) + 1,
-  reportType: 'customer' // 'customer' hoặc 'supplier'
+  year: new Date().getFullYear(), // Always use current year
+  reportType: 'customer' // 'customer' or 'supplier'
 });
 
 // Data state
@@ -18,50 +15,8 @@ const reportData = ref(null);
 const isLoading = ref(false);
 const error = ref(null);
 
-// Computed lists
-const months = computed(() => [
-  { id: 1, name: 'Tháng 1' },
-  { id: 2, name: 'Tháng 2' },
-  { id: 3, name: 'Tháng 3' },
-  { id: 4, name: 'Tháng 4' },
-  { id: 5, name: 'Tháng 5' },
-  { id: 6, name: 'Tháng 6' },
-  { id: 7, name: 'Tháng 7' },
-  { id: 8, name: 'Tháng 8' },
-  { id: 9, name: 'Tháng 9' },
-  { id: 10, name: 'Tháng 10' },
-  { id: 11, name: 'Tháng 11' },
-  { id: 12, name: 'Tháng 12' }
-]);
-
-const quarters = computed(() => [
-  { id: 1, name: 'Quý 1 (Tháng 1-3)' },
-  { id: 2, name: 'Quý 2 (Tháng 4-6)' },
-  { id: 3, name: 'Quý 3 (Tháng 7-9)' },
-  { id: 4, name: 'Quý 4 (Tháng 10-12)' }
-]);
-
-const years = computed(() => {
-  const currentYear = new Date().getFullYear();
-  const yearList = [];
-  for (let i = 2020; i <= currentYear; i++) {
-    yearList.push(i);
-  }
-  return yearList;
-});
-
-// Computed for report title
-const reportTitle = computed(() => {
-  const timeFrameText = filters.timeFrame === 'month'
-    ? `${months.value.find(m => m.id === filters.month)?.name} ${filters.year}`
-    : `${quarters.value.find(q => q.id === filters.quarter)?.name}, ${filters.year}`;
-    
-  const reportTypeText = filters.reportType === 'customer'
-    ? 'Khách hàng'
-    : 'Nhà cung cấp';
-    
-  return `Báo cáo ${reportTypeText} - ${timeFrameText}`;
-});
+// UI State
+const activeTab = ref('month'); // 'month' or 'quarter'
 
 // Load report data
 const loadData = async () => {
@@ -72,25 +27,15 @@ const loadData = async () => {
     let responseData;
     
     if (filters.reportType === 'customer') {
-      // Load customer reports
-      if (filters.timeFrame === 'month') {
-        responseData = await customerReports.getMonthlyReport(filters.year, filters.month);
-      } else {
-        responseData = await customerReports.getQuarterlyReport(filters.year, filters.quarter);
-      }
+      // Load customer reports for current year
+      responseData = await customerReports.getYearlyReport(filters.year);
     } else {
-      // Load supplier reports
-      if (filters.timeFrame === 'month') {
-        responseData = await supplierReports.getMonthlyReport(filters.year, filters.month);
-      } else {
-        responseData = await supplierReports.getQuarterlyReport(filters.year, filters.quarter);
-      }
+      // Load supplier reports for current year
+      responseData = await supplierReports.getYearlyReport(filters.year);
     }
     
-    // Xử lý dữ liệu trả về để chỉ hiển thị tháng/quý đã chọn
     if (responseData) {
-      // Chuẩn bị dữ liệu cho hiển thị
-      reportData.value = processReportData(responseData);
+      reportData.value = responseData;
     }
   } catch (err) {
     console.error('Error loading report data:', err);
@@ -100,72 +45,128 @@ const loadData = async () => {
   }
 };
 
-// Thêm hàm xử lý dữ liệu để lọc theo thời gian đã chọn
-const processReportData = (data) => {
-  if (!data || !data.entities) return data;
+// Helper function to safely get entity name
+const entityName = (entity) => {
+  if (filters.reportType === 'customer') {
+    return entity.customerName || 'Khách hàng không xác định';
+  } else {
+    return entity.supplierName || 'Nhà cung cấp không xác định';
+  }
+};
+
+// Calculate total amount correctly by summing entity totals
+const calculateTotalAmount = () => {
+  if (!reportData.value || !reportData.value.entities || !reportData.value.entities.length) {
+    return 0;
+  }
   
-  // Sao chép đối tượng dữ liệu để không ảnh hưởng đến dữ liệu gốc
-  const processedData = { ...data };
+  return reportData.value.entities.reduce((total, entity) => {
+    return total + (entity.totalAmount || 0);
+  }, 0);
+};
+
+// Method to get the amount for a specific month from an entity
+const getMonthlyAmount = (entity, month) => {
+  if (!entity.transactionsByMonth) return formatCurrency(0);
   
-  // Lọc transactionsByMonth cho từng entity
-  processedData.entities = data.entities.map(entity => {
-    const processedEntity = { ...entity };
+  const monthData = entity.transactionsByMonth.find(
+    t => t.month === month && t.year === filters.year
+  );
+  
+  return formatCurrency(monthData ? monthData.amount : 0);
+};
+
+// Method to get the amount for a specific quarter from an entity
+const getQuarterlyAmount = (entity, quarter) => {
+  if (!entity.transactionsByMonth) return formatCurrency(0);
+  
+  // Calculate months in the quarter
+  const startMonth = (quarter - 1) * 3 + 1;
+  const endMonth = startMonth + 2;
+  
+  // Sum all transactions in those months
+  let quarterlyTotal = 0;
+  for (let month = startMonth; month <= endMonth; month++) {
+    const monthData = entity.transactionsByMonth.find(
+      t => t.month === month && t.year === filters.year
+    );
     
-    if (processedEntity.transactionsByMonth && processedEntity.transactionsByMonth.length > 0) {
-      if (filters.timeFrame === 'month') {
-        // Nếu xem theo tháng, chỉ hiển thị tháng đã chọn
-        processedEntity.transactionsByMonth = processedEntity.transactionsByMonth.filter(
-          trans => trans.year === filters.year && trans.month === filters.month
-        );
-      } else {
-        // Nếu xem theo quý, chỉ hiển thị các tháng trong quý đã chọn
-        const startMonth = (filters.quarter - 1) * 3 + 1;
-        const endMonth = startMonth + 2;
-        processedEntity.transactionsByMonth = processedEntity.transactionsByMonth.filter(
-          trans => trans.year === filters.year && 
-                 trans.month >= startMonth && 
-                 trans.month <= endMonth
-        );
+    if (monthData) {
+      quarterlyTotal += parseFloat(monthData.amount || 0);
+    }
+  }
+  
+  return formatCurrency(quarterlyTotal);
+};
+
+// Method to get the total amount for a specific month across all entities
+const getMonthlyTotal = (month) => {
+  if (!reportData.value || !reportData.value.entities) return formatCurrency(0);
+  
+  let total = 0;
+  reportData.value.entities.forEach(entity => {
+    if (entity.transactionsByMonth) {
+      const monthData = entity.transactionsByMonth.find(
+        t => t.month === month && t.year === filters.year
+      );
+      
+      if (monthData) {
+        total += parseFloat(monthData.amount || 0);
       }
     }
-    
-    return processedEntity;
   });
   
-  return processedData;
+  return formatCurrency(total);
+};
+
+// Method to get the total amount for a specific quarter across all entities
+const getQuarterlyTotal = (quarter) => {
+  if (!reportData.value || !reportData.value.entities) return formatCurrency(0);
+  
+  // Calculate months in the quarter
+  const startMonth = (quarter - 1) * 3 + 1;
+  const endMonth = startMonth + 2;
+  
+  let total = 0;
+  reportData.value.entities.forEach(entity => {
+    if (entity.transactionsByMonth) {
+      for (let month = startMonth; month <= endMonth; month++) {
+        const monthData = entity.transactionsByMonth.find(
+          t => t.month === month && t.year === filters.year
+        );
+        
+        if (monthData) {
+          total += parseFloat(monthData.amount || 0);
+        }
+      }
+    }
+  });
+  
+  return formatCurrency(total);
 };
 
 // Format currency
 const formatCurrency = (value) => {
-  if (!value) return '0 ₫';
-  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
+  if (!value) return '0 đ';
+  return new Intl.NumberFormat('vi-VN', { 
+    style: 'currency', 
+    currency: 'VND',
+    maximumFractionDigits: 0 
+  }).format(value);
 };
 
 // Format percentage
 const formatPercentage = (value) => {
   if (!value) return '0%';
-  return `${value.toFixed(2)}%`;
-};
-
-// Apply filter
-const applyFilter = () => {
-  loadData();
-};
-
-// Toggle detail view for a specific entity
-const expandedEntities = reactive(new Set());
-const toggleEntityDetail = (entityId) => {
-  if (expandedEntities.has(entityId)) {
-    expandedEntities.delete(entityId);
-  } else {
-    expandedEntities.add(entityId);
-  }
+  return `${Math.round(value)}%`;
 };
 
 // Load initial data
 onMounted(() => {
-  // Load initial data
-  loadData();
+  // Ensure DOM is rendered before loading data
+  nextTick(() => {
+    loadData();
+  });
 });
 </script>
 
@@ -173,233 +174,186 @@ onMounted(() => {
   <AppLayout>
     <template #page-title>Báo cáo KH/NCC</template>
     
-    <div class="content-box">
+    <div class="content-container">
       <h2>Báo cáo theo khách hàng/nhà cung cấp</h2>
       <p>Trang này hiển thị báo cáo thống kê giao dịch dựa trên khách hàng và nhà cung cấp.</p>
       
-      <!-- Bộ lọc báo cáo -->
+      <!-- Simplified filter container -->
       <div class="filter-container">
         <div class="filter-header">
           <h3 class="card-title">
-            <i class="fas fa-filter"></i> Bộ lọc báo cáo
+            <i class="bi bi-funnel-fill"></i> Bộ lọc báo cáo
           </h3>
         </div>
         <div class="filter-content">
           <div class="filter-grid">
             <div class="form-group">
               <label class="form-label">Loại báo cáo</label>
-              <select v-model="filters.reportType" class="form-select">
-                <option value="customer">Thu nhập theo khách hàng</option>
-                <option value="supplier">Chi phí theo nhà cung cấp</option>
+              <select v-model="filters.reportType" class="form-select" @change="loadData">
+                <option value="customer">8.6. Thu nhập theo khách hàng</option>
+                <option value="supplier">8.7. Chi phí theo nhà cung cấp</option>
               </select>
             </div>
-            
-            <div class="form-group">
-              <label class="form-label">Năm</label>
-              <select v-model="filters.year" class="form-select">
-                <option v-for="year in years" :key="year" :value="year">{{ year }}</option>
-              </select>
-            </div>
-            
-            <div class="form-group">
-              <label class="form-label">Khoảng thời gian</label>
-              <select v-model="filters.timeFrame" class="form-select">
-                <option value="month">Theo tháng</option>
-                <option value="quarter">Theo quý</option>
-              </select>
-            </div>
-            
-            <!-- Hiển thị bộ lọc tháng nếu xem theo tháng -->
-            <div v-if="filters.timeFrame === 'month'" class="form-group">
-              <label class="form-label">Tháng</label>
-              <select v-model="filters.month" class="form-select">
-                <option v-for="month in months" :key="month.id" :value="month.id">{{ month.name }}</option>
-              </select>
-            </div>
-            
-            <!-- Hiển thị bộ lọc quý nếu xem theo quý -->
-            <div v-if="filters.timeFrame === 'quarter'" class="form-group">
-              <label class="form-label">Quý</label>
-              <select v-model="filters.quarter" class="form-select">
-                <option v-for="quarter in quarters" :key="quarter.id" :value="quarter.id">{{ quarter.name }}</option>
-              </select>
-            </div>
-          </div>
-          
-          <div class="filter-actions">
-            <button @click="applyFilter" class="btn btn-primary">
-              <i class="fas fa-search"></i> Áp dụng
-            </button>
           </div>
         </div>
       </div>
       
-      <!-- Hiển thị báo cáo -->
-      <div class="report-container">
-        <div v-if="isLoading" class="loading-indicator">
-          <div class="spinner">
-            <div class="bounce1"></div>
-            <div class="bounce2"></div>
-            <div class="bounce3"></div>
+      <!-- Hiển thị báo cáo theo thiết kế mới -->
+      <div class="report-container" v-if="!isLoading && !error && reportData">
+        <!-- Tiêu đề báo cáo -->
+        <h2 class="report-section-title">
+          {{ filters.reportType === 'customer' ? '8.6. Thu nhập theo Khách hàng' : '8.7. Chi phí theo Nhà cung cấp' }}
+        </h2>
+        <p class="report-section-subtitle">Thông tin được sắp xếp theo tổng {{ filters.reportType === 'customer' ? 'thu nhập' : 'chi phí' }} năm {{ filters.year }}</p>
+        
+        <!-- Tab điều hướng -->
+        <div class="report-tabs">
+          <div class="tab-container">
+            <button 
+              class="tab-button" 
+              :class="{ active: activeTab === 'month' }"
+              @click="activeTab = 'month'"
+            >
+              Tháng
+            </button>
+            <button 
+              class="tab-button" 
+              :class="{ active: activeTab === 'quarter' }"
+              @click="activeTab = 'quarter'"
+            >
+              Quý
+            </button>
           </div>
-          <p>Đang tải dữ liệu báo cáo...</p>
         </div>
         
-        <div v-else-if="error" class="error-message">
-          <i class="fas fa-exclamation-triangle"></i>
-          <p>{{ error }}</p>
-        </div>
-        
-        <div v-else-if="reportData" class="report-data">
-          <h3 class="report-title">{{ reportTitle }}</h3>
-          
-          <!-- Thông tin tổng quan -->
-          <div class="summary-cards">
-            <div class="summary-card">
-              <div class="card-label">Tổng {{ filters.reportType === 'customer' ? 'thu nhập' : 'chi phí' }}</div>
-              <div class="card-value">{{ formatCurrency(reportData.totalAmount) }}</div>
-            </div>
-            
-            <div class="summary-card">
-              <div class="card-label">{{ filters.reportType === 'customer' ? 'Đã nhận' : 'Đã trả' }}</div>
-              <div class="card-value">{{ formatCurrency(filters.reportType === 'customer' ? reportData.receivedAmount : reportData.paidAmount) }}</div>
-            </div>
-            
-            <div class="summary-card">
-              <div class="card-label">{{ filters.reportType === 'customer' ? 'Chưa nhận' : 'Chưa trả' }}</div>
-              <div class="card-value">{{ formatCurrency(filters.reportType === 'customer' ? reportData.pendingAmount : reportData.unpaidAmount) }}</div>
-            </div>
-          </div>
-          
-          <!-- Bảng chi tiết -->
-          <div v-if="reportData.entities && reportData.entities.length > 0" class="table-responsive">
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>{{ filters.reportType === 'customer' ? 'Khách hàng' : 'Nhà cung cấp' }}</th>
-                  <th>Tổng {{ filters.reportType === 'customer' ? 'thu nhập' : 'chi phí' }}</th>
-                  <th>{{ filters.reportType === 'customer' ? 'Đã nhận' : 'Đã trả' }}</th>
-                  <th>{{ filters.reportType === 'customer' ? 'Chưa nhận' : 'Chưa trả' }}</th>
-                  <th>Tỷ lệ</th>
-                  <th>Chi tiết</th>
-                </tr>
-              </thead>
-              <tbody>
-                <template v-for="entity in reportData.entities" :key="filters.reportType === 'customer' ? entity.customerId : entity.supplierId">
-                  <tr>
-                    <td>{{ filters.reportType === 'customer' ? entity.customerName : entity.supplierName }}</td>
-                    <td>{{ formatCurrency(entity.totalAmount) }}</td>
-                    <td>{{ formatCurrency(filters.reportType === 'customer' ? entity.receivedAmount : entity.paidAmount) }}</td>
-                    <td>{{ formatCurrency(filters.reportType === 'customer' ? entity.pendingAmount : entity.unpaidAmount) }}</td>
-                    <td>{{ formatPercentage(entity.percentage) }}</td>
-                    <td>
-                      <button @click="toggleEntityDetail(filters.reportType === 'customer' ? entity.customerId : entity.supplierId)" 
-                              class="btn btn-sm btn-outline-primary">
-                        <i :class="expandedEntities.has(filters.reportType === 'customer' ? entity.customerId : entity.supplierId) ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"></i>
-                        Chi tiết
-                      </button>
-                    </td>
-                  </tr>
-                  
-                  <!-- Chi tiết -->
-                  <template v-if="expandedEntities.has(filters.reportType === 'customer' ? entity.customerId : entity.supplierId)">
-                    <tr>
-                      <td colspan="6" class="p-0">
-                        <div class="entity-details">
-                          <!-- Hiển thị chi tiết theo tháng -->
-                          <div class="detail-section" v-if="entity.transactionsByMonth && entity.transactionsByMonth.length > 0">
-                            <h5>Chi tiết theo tháng</h5>
-                            <div class="table-responsive">
-                              <table class="table table-sm">
-                                <thead>
-                                  <tr>
-                                    <th>Thời gian</th>
-                                    <th>Số giao dịch</th>
-                                    <th>Tổng {{ filters.reportType === 'customer' ? 'thu nhập' : 'chi phí' }}</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  <tr v-for="month in entity.transactionsByMonth" :key="`${month.year}-${month.month}`">
-                                    <td>{{ filters.timeFrame === 'month' ? 'Tháng ' + month.month + '/' + month.year : 'Quý ' + Math.ceil(month.month/3) + '/' + month.year }}</td>
-                                    <td>{{ month.transactionCount }}</td>
-                                    <td>{{ formatCurrency(month.amount) }}</td>
-                                  </tr>
-                                </tbody>
-                              </table>
-                            </div>
-                          </div>
-                          
-                          <!-- Hiển thị nếu không có dữ liệu -->
-                          <div v-else class="no-data-message">
-                            <i class="fas fa-info-circle"></i>
-                            <p>Không có dữ liệu giao dịch cho khoảng thời gian này.</p>
-                          </div>
-                          
-                          <!-- Chi tiết theo danh mục không thay đổi -->
-                          <div class="detail-section" v-if="entity.transactionsByCategory && entity.transactionsByCategory.length > 0">
-                            <h5>Chi tiết theo danh mục</h5>
-                            <div class="table-responsive">
-                              <table class="table table-sm">
-                                <thead>
-                                  <tr>
-                                    <th>Danh mục</th>
-                                    <th>Tổng {{ filters.reportType === 'customer' ? 'thu nhập' : 'chi phí' }}</th>
-                                    <th>Tỷ lệ</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  <tr v-for="category in entity.transactionsByCategory" :key="category.categoryId">
-                                    <td>{{ category.categoryName }}</td>
-                                    <td>{{ formatCurrency(category.amount) }}</td>
-                                    <td>{{ formatPercentage(category.percentage) }}</td>
-                                  </tr>
-                                </tbody>
-                              </table>
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  </template>
+        <!-- Bảng dữ liệu cho xem theo tháng -->
+        <div v-if="activeTab === 'month'" class="report-table-container">
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th>{{ filters.reportType === 'customer' ? 'Khách hàng' : 'Nhà cung cấp' }}</th>
+                <th v-for="month in 12" :key="month">T{{ month }}</th>
+                <th>Tổng năm</th>
+                <th>%</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="entity in reportData.entities" :key="entity.id || (filters.reportType === 'customer' ? entity.customerId : entity.supplierId)">
+                <td>{{ entityName(entity) }}</td>
+                <!-- Hiển thị số tiền theo từng tháng -->
+                <template v-for="month in 12" :key="month">
+                  <td>
+                    {{ getMonthlyAmount(entity, month) }}
+                  </td>
                 </template>
-              </tbody>
-            </table>
-          </div>
-          
-          <div v-else class="no-data">
-            <i class="fas fa-info-circle"></i>
-            <p>Không có dữ liệu cho khoảng thời gian này.</p>
-          </div>
+                <td>{{ formatCurrency(entity.totalAmount) }}</td>
+                <td>{{ formatPercentage(entity.percentage) }}</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr>
+                <th>Tổng cộng</th>
+                <!-- Hiển thị tổng số tiền theo từng tháng -->
+                <template v-for="month in 12" :key="month">
+                  <th>
+                    {{ getMonthlyTotal(month) }}
+                  </th>
+                </template>
+                <th>{{ formatCurrency(calculateTotalAmount()) }}</th>
+                <th>100%</th>
+              </tr>
+            </tfoot>
+          </table>
         </div>
         
-        <div v-else class="no-data">
-          <i class="fas fa-info-circle"></i>
-          <p>Vui lòng chọn các bộ lọc và nhấn Áp dụng để xem báo cáo.</p>
+        <!-- Bảng dữ liệu cho xem theo quý -->
+        <div v-if="activeTab === 'quarter'" class="report-table-container">
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th>{{ filters.reportType === 'customer' ? 'Khách hàng' : 'Nhà cung cấp' }}</th>
+                <th>Q1</th>
+                <th>Q2</th>
+                <th>Q3</th>
+                <th>Q4</th>
+                <th>Tổng năm</th>
+                <th>%</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="entity in reportData.entities" :key="entity.id || (filters.reportType === 'customer' ? entity.customerId : entity.supplierId)">
+                <td>{{ entityName(entity) }}</td>
+                <!-- Hiển thị số tiền theo từng quý -->
+                <template v-for="quarter in 4" :key="quarter">
+                  <td>
+                    {{ getQuarterlyAmount(entity, quarter) }}
+                  </td>
+                </template>
+                <td>{{ formatCurrency(entity.totalAmount) }}</td>
+                <td>{{ formatPercentage(entity.percentage) }}</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr>
+                <th>Tổng cộng</th>
+                <!-- Hiển thị tổng số tiền theo từng quý -->
+                <template v-for="quarter in 4" :key="quarter">
+                  <th>
+                    {{ getQuarterlyTotal(quarter) }}
+                  </th>
+                </template>
+                <th>{{ formatCurrency(calculateTotalAmount()) }}</th>
+                <th>100%</th>
+              </tr>
+            </tfoot>
+          </table>
         </div>
+      </div>
+      
+      <!-- Loading spinner -->
+      <div v-if="isLoading" class="loading-spinner-container">
+        <div class="loading-spinner"></div>
+        <p>Đang tải dữ liệu báo cáo...</p>
+      </div>
+      
+      <!-- Error message -->
+      <div v-else-if="error" class="error-message">
+        <i class="bi bi-exclamation-triangle"></i>
+        <p>{{ error }}</p>
+        <button @click="loadData" class="btn-primary">
+          <i class="bi bi-arrow-repeat"></i> Thử lại
+        </button>
+      </div>
+      
+      <!-- No data message -->
+      <div v-else-if="!reportData" class="no-data">
+        <i class="bi bi-info-circle"></i>
+        <p>Không có dữ liệu báo cáo.</p>
       </div>
     </div>
   </AppLayout>
 </template>
 
 <style scoped>
-.content-box {
+.content-container {
   background-color: white;
-  padding: 2rem;
+  padding: 1rem 2rem;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.content-box h2 {
+.content-container h2 {
   color: #111827;
   margin-top: 0;
   margin-bottom: 1rem;
 }
 
-.content-box p {
+.content-container p {
   color: #6b7280;
   line-height: 1.5;
 }
 
+/* Filter styles */
 .filter-container {
   margin-top: 1.5rem;
   margin-bottom: 2rem;
@@ -419,7 +373,7 @@ onMounted(() => {
 
 .filter-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1rem;
 }
 
@@ -441,154 +395,112 @@ onMounted(() => {
   border-radius: 4px;
 }
 
-.filter-actions {
-  margin-top: 1rem;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.btn {
+.btn-primary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.5rem;
   padding: 0.5rem 1rem;
   border-radius: 0.375rem;
+  border: 1px solid #2563eb;
+  background-color: #2563eb;
+  color: white;
   font-weight: 500;
-  line-height: 1.5;
-  text-align: center;
   cursor: pointer;
   transition: all 0.2s;
 }
 
-.btn-primary {
-  color: white;
-  background-color: #2563eb;
-  border: 1px solid #2563eb;
-}
-
 .btn-primary:hover {
   background-color: #1d4ed8;
+  border-color: #1d4ed8;
 }
 
-.btn-sm {
-  padding: 0.25rem 0.5rem;
-  font-size: 0.875rem;
-  border-radius: 0.2rem;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-.btn-outline-primary {
-  color: #2563eb;
-  background-color: transparent;
-  border: 1px solid #2563eb;
-}
-
-.btn-outline-primary:hover {
-  background-color: #2563eb;
-  color: white;
-}
-
+/* Report styles */
 .report-container {
   margin-top: 2rem;
 }
 
-.report-title {
-  margin-bottom: 1.5rem;
-  font-size: 1.25rem;
+.report-section-title {
+  font-size: 1.5rem;
   font-weight: 600;
-  color: #111827;
+  color: #1f2937;
+  margin-bottom: 0.25rem;
 }
 
-.summary-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1rem;
+.report-section-subtitle {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin-bottom: 1.5rem;
+}
+
+/* Tab navigation */
+.report-tabs {
+  margin-bottom: 1rem;
+}
+
+.tab-container {
+  display: flex;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.tab-button {
+  padding: 0.75rem 1.5rem;
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  color: #6b7280;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.tab-button:hover {
+  color: #4b5563;
+}
+
+.tab-button.active {
+  color: #2563eb;
+  border-bottom: 2px solid #2563eb;
+}
+
+/* Report table styles */
+.report-table-container {
+  overflow-x: auto;
   margin-bottom: 2rem;
 }
 
-.summary-card {
-  background-color: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 1.5rem;
-}
-
-.card-label {
-  font-size: 0.875rem;
-  color: #6b7280;
-  margin-bottom: 0.5rem;
-}
-
-.card-value {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #111827;
-}
-
-.table-responsive {
-  overflow-x: auto;
-  margin-bottom: 1.5rem;
-}
-
-.table {
+.report-table {
   width: 100%;
   border-collapse: collapse;
-}
-
-.table th {
-  background-color: #f3f4f6;
-  padding: 0.75rem 1rem;
-  font-weight: 600;
-  color: #374151;
-  text-align: left;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.table td {
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.table-sm th,
-.table-sm td {
-  padding: 0.5rem 0.75rem;
   font-size: 0.875rem;
 }
 
-.entity-details {
-  background-color: #f9fafb;
-  padding: 1.5rem;
-  border-top: 1px solid #e5e7eb;
+.report-table th,
+.report-table td {
+  border: 1px solid #e5e7eb;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
 }
 
-.detail-section {
-  margin-bottom: 1.5rem;
-}
-
-.detail-section h5 {
-  font-size: 1rem;
+.report-table th {
+  background-color: #f3f4f6;
   font-weight: 600;
   color: #374151;
-  margin-bottom: 1rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid #e5e7eb;
 }
 
-.no-data-message {
-  text-align: center;
-  padding: 2rem;
-  color: #6b7280;
+.report-table tbody tr:nth-child(even) {
+  background-color: #f9fafb;
 }
 
-.no-data-message i {
-  font-size: 2rem;
-  margin-bottom: 0.5rem;
-  color: #9ca3af;
+.report-table tbody tr:hover {
+  background-color: #f3f4f6;
 }
 
-.loading-indicator,
+.report-table tfoot {
+  font-weight: 600;
+}
+
+/* Loading, error, and no data states */
+.loading-spinner-container,
 .error-message,
 .no-data {
   display: flex;
@@ -599,8 +511,19 @@ onMounted(() => {
   text-align: center;
 }
 
-.spinner {
+.loading-spinner {
+  width: 40px;
+  height: 40px;
   margin-bottom: 1rem;
+  border: 4px solid #e5e7eb;
+  border-radius: 50%;
+  border-top-color: #3b82f6;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 .error-message {
@@ -617,43 +540,6 @@ onMounted(() => {
 @media (max-width: 768px) {
   .filter-grid {
     grid-template-columns: 1fr;
-  }
-  
-  .summary-cards {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* Spinner animation */
-.spinner {
-  margin: 0 auto;
-  width: 70px;
-  text-align: center;
-}
-
-.spinner > div {
-  width: 14px;
-  height: 14px;
-  background-color: #3b82f6;
-  border-radius: 100%;
-  display: inline-block;
-  animation: sk-bouncedelay 1.4s infinite ease-in-out both;
-}
-
-.spinner .bounce1 {
-  animation-delay: -0.32s;
-}
-
-.spinner .bounce2 {
-  animation-delay: -0.16s;
-}
-
-@keyframes sk-bouncedelay {
-  0%, 80%, 100% { 
-    transform: scale(0);
-  } 
-  40% { 
-    transform: scale(1.0);
   }
 }
 </style> 

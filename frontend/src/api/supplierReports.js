@@ -37,5 +37,22 @@ export const supplierReports = {
       console.error('Error getting quarterly supplier report:', error);
       throw error;
     }
+  },
+
+  /**
+   * Lấy báo cáo nhà cung cấp theo năm
+   * @param {number} year - Năm báo cáo
+   * @returns {Promise<Object>} - Dữ liệu báo cáo
+   */
+  async getYearlyReport(year) {
+    try {
+      const params = new URLSearchParams();
+      params.append('year', year);
+      const response = await api.get(`/api/reports/suppliers/yearly?${params.toString()}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error getting yearly supplier report:', error);
+      throw error;
+    }
   }
 }; 

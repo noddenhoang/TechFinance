@@ -37,5 +37,22 @@ export const customerReports = {
       console.error('Error getting quarterly customer report:', error);
       throw error;
     }
+  },
+
+  /**
+   * Lấy báo cáo khách hàng theo năm
+   * @param {number} year - Năm báo cáo
+   * @returns {Promise<Object>} - Dữ liệu báo cáo
+   */
+  async getYearlyReport(year) {
+    try {
+      const params = new URLSearchParams();
+      params.append('year', year);
+      const response = await api.get(`/api/reports/customers/yearly?${params.toString()}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error getting yearly customer report:', error);
+      throw error;
+    }
   }
 }; 

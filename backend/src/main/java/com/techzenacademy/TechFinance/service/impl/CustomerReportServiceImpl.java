@@ -58,6 +58,21 @@ public class CustomerReportServiceImpl implements CustomerReportService {
         return generateReport(transactions);
     }
     
+    @Override
+    public Map<String, Object> generateYearlyReport(int year) {
+        // Tạo phạm vi ngày tháng cho cả năm
+        LocalDate startDate = LocalDate.of(year, 1, 1);
+        LocalDate endDate = LocalDate.of(year, 12, 31);
+        
+        // Lấy dữ liệu giao dịch thu nhập trong khoảng thời gian
+        List<IncomeTransaction> transactions = incomeTransactionRepository.findAll().stream()
+                .filter(t -> !t.getTransactionDate().isBefore(startDate) && 
+                             !t.getTransactionDate().isAfter(endDate))
+                .collect(Collectors.toList());
+        
+        return generateReport(transactions);
+    }
+    
     private Map<String, Object> generateReport(List<IncomeTransaction> transactions) {
         Map<String, Object> result = new HashMap<>();
         List<CustomerReportDTO> customerReports = new ArrayList<>();
