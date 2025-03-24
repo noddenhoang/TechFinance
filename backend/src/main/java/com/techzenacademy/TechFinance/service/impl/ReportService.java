@@ -1,5 +1,18 @@
 package com.techzenacademy.TechFinance.service.impl;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
 import com.techzenacademy.TechFinance.dto.CategorySummaryDTO;
 import com.techzenacademy.TechFinance.dto.CustomerReportDTO;
 import com.techzenacademy.TechFinance.dto.SupplierReportDTO;
@@ -7,20 +20,13 @@ import com.techzenacademy.TechFinance.dto.TransactionSummaryDTO;
 import com.techzenacademy.TechFinance.entity.Customer;
 import com.techzenacademy.TechFinance.entity.Supplier;
 import com.techzenacademy.TechFinance.repository.CustomerRepository;
+import com.techzenacademy.TechFinance.repository.ExpenseTransactionRepository;
 import com.techzenacademy.TechFinance.repository.IncomeTransactionRepository;
 import com.techzenacademy.TechFinance.repository.SupplierRepository;
-import com.techzenacademy.TechFinance.repository.ExpenseTransactionRepository;
+
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.PersistenceContext;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.time.LocalDate;
-import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class ReportService {
@@ -313,15 +319,6 @@ public class ReportService {
             summary.setMonth((Integer) row[1]);
             summary.setAmount((BigDecimal) row[2]);
             
-            if (totalAmount.compareTo(BigDecimal.ZERO) > 0) {
-                BigDecimal percentage = summary.getAmount()
-                        .multiply(new BigDecimal("100"))
-                        .divide(totalAmount, 2, RoundingMode.HALF_UP);
-                summary.setPercentage(percentage);
-            } else {
-                summary.setPercentage(BigDecimal.ZERO);
-            }
-            
             summaries.add(summary);
         }
         
@@ -358,15 +355,6 @@ public class ReportService {
             summary.setCategoryId((Integer) row[0]);
             summary.setCategoryName((String) row[1]);
             summary.setAmount((BigDecimal) row[2]);
-            
-            if (totalAmount.compareTo(BigDecimal.ZERO) > 0) {
-                BigDecimal percentage = summary.getAmount()
-                        .multiply(new BigDecimal("100"))
-                        .divide(totalAmount, 2, RoundingMode.HALF_UP);
-                summary.setPercentage(percentage);
-            } else {
-                summary.setPercentage(BigDecimal.ZERO);
-            }
             
             summaries.add(summary);
         }
@@ -405,15 +393,6 @@ public class ReportService {
             summary.setMonth((Integer) row[1]);
             summary.setAmount((BigDecimal) row[2]);
             
-            if (totalAmount.compareTo(BigDecimal.ZERO) > 0) {
-                BigDecimal percentage = summary.getAmount()
-                        .multiply(new BigDecimal("100"))
-                        .divide(totalAmount, 2, RoundingMode.HALF_UP);
-                summary.setPercentage(percentage);
-            } else {
-                summary.setPercentage(BigDecimal.ZERO);
-            }
-            
             summaries.add(summary);
         }
         
@@ -450,15 +429,6 @@ public class ReportService {
             summary.setCategoryId((Integer) row[0]);
             summary.setCategoryName((String) row[1]);
             summary.setAmount((BigDecimal) row[2]);
-            
-            if (totalAmount.compareTo(BigDecimal.ZERO) > 0) {
-                BigDecimal percentage = summary.getAmount()
-                        .multiply(new BigDecimal("100"))
-                        .divide(totalAmount, 2, RoundingMode.HALF_UP);
-                summary.setPercentage(percentage);
-            } else {
-                summary.setPercentage(BigDecimal.ZERO);
-            }
             
             summaries.add(summary);
         }

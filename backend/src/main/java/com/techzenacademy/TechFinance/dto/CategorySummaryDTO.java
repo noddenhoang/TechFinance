@@ -1,7 +1,8 @@
 package com.techzenacademy.TechFinance.dto;
 
-import lombok.Data;
 import java.math.BigDecimal;
+
+import lombok.Data;
 
 @Data
 public class CategorySummaryDTO {

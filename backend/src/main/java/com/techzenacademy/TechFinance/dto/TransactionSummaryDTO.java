@@ -1,12 +1,14 @@
 package com.techzenacademy.TechFinance.dto;
 
-import lombok.Data;
 import java.math.BigDecimal;
+
+import lombok.Data;
 
 @Data
 public class TransactionSummaryDTO {
     private Integer year;
     private Integer month;
+    private Integer transactionCount;
     private BigDecimal amount;
-    private BigDecimal percentage; // % so với tổng
+    private BigDecimal percentage;
 }
