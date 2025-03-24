@@ -1,17 +1,21 @@
 package com.techzenacademy.TechFinance.controller;
 
-import com.techzenacademy.TechFinance.dto.TaxReportDTO;
-import com.techzenacademy.TechFinance.service.impl.TaxReportService;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
+import java.time.LocalDate;
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.time.LocalDate;
-import java.util.List;
+import com.techzenacademy.TechFinance.dto.TaxReportDTO;
+import com.techzenacademy.TechFinance.service.impl.TaxReportService;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
 @RequestMapping("/api/reports/tax")
@@ -22,7 +26,6 @@ public class TaxReportController {
     private TaxReportService taxReportService;
 
     @GetMapping("/monthly")
-    @PreAuthorize("hasRole('admin')")
     @Operation(summary = "Lấy báo cáo thuế theo tháng")
     public ResponseEntity<TaxReportDTO> getMonthlyTaxReport(
             @RequestParam(name = "year") Integer year,
@@ -32,7 +35,6 @@ public class TaxReportController {
     }
 
     @GetMapping("/yearly")
-    @PreAuthorize("hasRole('admin')")
     @Operation(summary = "Lấy báo cáo thuế theo năm")
     public ResponseEntity<List<TaxReportDTO>> getYearlyTaxReports(
             @RequestParam(name = "year") Integer year) {
@@ -41,7 +43,6 @@ public class TaxReportController {
     }
 
     @GetMapping("/range")
-    @PreAuthorize("hasRole('admin')")
     @Operation(summary = "Lấy báo cáo thuế theo khoảng thời gian")
     public ResponseEntity<List<TaxReportDTO>> getTaxReportsByDateRange(
             @RequestParam(name = "startDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
