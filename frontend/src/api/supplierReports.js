@@ -9,7 +9,10 @@ export const supplierReports = {
    */
   async getMonthlyReport(year, month) {
     try {
-      const response = await api.get(`/api/reports/suppliers/monthly/${year}/${month}`);
+      const params = new URLSearchParams();
+      params.append('year', year);
+      params.append('month', month);
+      const response = await api.get(`/api/reports/suppliers/monthly?${params.toString()}`);
       return response.data;
     } catch (error) {
       console.error('Error getting monthly supplier report:', error);
@@ -25,7 +28,10 @@ export const supplierReports = {
    */
   async getQuarterlyReport(year, quarter) {
     try {
-      const response = await api.get(`/api/reports/suppliers/quarterly/${year}/${quarter}`);
+      const params = new URLSearchParams();
+      params.append('year', year);
+      params.append('quarter', quarter);
+      const response = await api.get(`/api/reports/suppliers/quarterly?${params.toString()}`);
       return response.data;
     } catch (error) {
       console.error('Error getting quarterly supplier report:', error);

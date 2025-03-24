@@ -9,7 +9,10 @@ export const customerReports = {
    */
   async getMonthlyReport(year, month) {
     try {
-      const response = await api.get(`/api/reports/customers/monthly/${year}/${month}`);
+      const params = new URLSearchParams();
+      params.append('year', year);
+      params.append('month', month);
+      const response = await api.get(`/api/reports/customers/monthly?${params.toString()}`);
       return response.data;
     } catch (error) {
       console.error('Error getting monthly customer report:', error);
@@ -25,7 +28,10 @@ export const customerReports = {
    */
   async getQuarterlyReport(year, quarter) {
     try {
-      const response = await api.get(`/api/reports/customers/quarterly/${year}/${quarter}`);
+      const params = new URLSearchParams();
+      params.append('year', year);
+      params.append('quarter', quarter);
+      const response = await api.get(`/api/reports/customers/quarterly?${params.toString()}`);
       return response.data;
     } catch (error) {
       console.error('Error getting quarterly customer report:', error);

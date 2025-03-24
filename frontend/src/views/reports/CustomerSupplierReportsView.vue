@@ -164,8 +164,8 @@ const toggleEntityDetail = (entityId) => {
 
 // Load initial data
 onMounted(() => {
-  // Tạm thời để loadData trống để tránh lỗi khi chưa có API
-  // loadData();
+  // Load initial data
+  loadData();
 });
 </script>
 
@@ -285,7 +285,7 @@ onMounted(() => {
                 </tr>
               </thead>
               <tbody>
-                <template v-for="entity in reportData.entities" :key="entity.customerId || entity.supplierId">
+                <template v-for="entity in reportData.entities" :key="filters.reportType === 'customer' ? entity.customerId : entity.supplierId">
                   <tr>
                     <td>{{ filters.reportType === 'customer' ? entity.customerName : entity.supplierName }}</td>
                     <td>{{ formatCurrency(entity.totalAmount) }}</td>
@@ -302,7 +302,7 @@ onMounted(() => {
                   </tr>
                   
                   <!-- Chi tiết -->
-                  <template v-if="expandedEntities.has(entity.customerId || entity.supplierId)">
+                  <template v-if="expandedEntities.has(filters.reportType === 'customer' ? entity.customerId : entity.supplierId)">
                     <tr>
                       <td colspan="6" class="p-0">
                         <div class="entity-details">
