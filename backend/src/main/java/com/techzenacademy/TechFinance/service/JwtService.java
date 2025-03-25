@@ -25,6 +25,9 @@ public class JwtService {
     @Value("${jwt.expiration}")
     private long jwtExpiration;
     
+    @Value("${jwt.refresh.expiration:604800000}") // 7 days by default
+    private long refreshTokenExpiration;
+    
     public String generateToken(String username) {
         Map<String, Object> claims = new HashMap<>();
         return createToken(claims, username);
@@ -82,6 +85,33 @@ public class JwtService {
         try {
             final String extractedUsername = extractUsername(token);
             return (extractedUsername.equals(username) && !isTokenExpired(token));
+        } catch (Exception e) {
+            return false;
+        }
+    }
+    
+    /**
+     * Generate a refresh token with longer expiration
+     */
+    public String generateRefreshToken(String username) {
+        return Jwts.builder()
+                .setSubject(username)
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setExpiration(new Date(System.currentTimeMillis() + refreshTokenExpiration))
+                .signWith(getSignKey(), SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+    /**
+     * Validate the refresh token
+     */
+    public boolean validateRefreshToken(String token) {
+        try {
+            Jwts.parserBuilder()
+                .setSigningKey(getSignKey())
+                .build()
+                .parseClaimsJws(token);
+            return true;
         } catch (Exception e) {
             return false;
         }

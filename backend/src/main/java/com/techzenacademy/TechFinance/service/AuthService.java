@@ -43,8 +43,9 @@ public class AuthService {
             );
             
             if (authentication.isAuthenticated()) {
-                // Generate token
+                // Generate tokens
                 String token = jwtService.generateToken(username);
+                String refreshToken = jwtService.generateRefreshToken(username);
                 
                 // Get user details
                 User user = userRepository.findByUsername(username)
@@ -59,8 +60,8 @@ public class AuthService {
                     user.getRole()
                 );
                 
-                // Return response with token and user details
-                return new AuthResponse(token, userDto);
+                // Return response with tokens and user details
+                return new AuthResponse(token, refreshToken, userDto);
             } else {
                 throw new BadCredentialsException("Authentication failed");
             }
@@ -150,6 +151,46 @@ public class AuthService {
             throw new RuntimeException("User not found");
         } catch (Exception e) {
             throw new RuntimeException("Error retrieving user details: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Refresh an access token using a valid refresh token
+     */
+    public AuthResponse refreshToken(String refreshToken) {
+        if (refreshToken == null || refreshToken.isEmpty()) {
+            throw new IllegalArgumentException("Refresh token cannot be empty");
+        }
+        
+        try {
+            // Validate refresh token
+            if (!jwtService.validateRefreshToken(refreshToken)) {
+                throw new RuntimeException("Invalid refresh token");
+            }
+            
+            // Extract username
+            String username = jwtService.extractUsername(refreshToken);
+            
+            // Get user from database
+            User user = userRepository.findByUsername(username)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+            
+            // Generate new access token
+            String newToken = jwtService.generateToken(username);
+            
+            // Create UserDto
+            UserDto userDto = new UserDto(
+                user.getId(),
+                user.getUsername(),
+                user.getFullName() != null ? user.getFullName() : "",
+                user.getEmail() != null ? user.getEmail() : "",
+                user.getRole()
+            );
+            
+            // Return new access token with the same refresh token
+            return new AuthResponse(newToken, refreshToken, userDto);
+        } catch (Exception e) {
+            throw new RuntimeException("Token refresh failed: " + e.getMessage(), e);
         }
     }
 }

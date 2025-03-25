@@ -16,11 +16,31 @@ const serverStatus = ref('checking') // 'checking', 'online', 'offline'
 const loginHelp = ref(null)
 const showLoginHelp = ref(false)
 
-// Check server status on component mount
+// Check server status and existing auth on component mount
 onMounted(async () => {
   serverStatus.value = 'checking'
   const isConnected = await authStore.checkApiStatus()
   serverStatus.value = isConnected ? 'online' : 'offline'
+  
+  // Try to auto-login with existing tokens
+  if (authStore.token && authStore.refreshToken) {
+    isLoading.value = true
+    try {
+      // Check and refresh token if needed
+      const isValid = await authStore.checkAndRefreshToken()
+      if (isValid) {
+        // Verify that the user details are still valid
+        await authStore.getCurrentUser()
+        router.push('/dashboard')
+        return
+      }
+    } catch (error) {
+      console.error('Auto-login failed:', error)
+      // If auto-login fails, continue with normal login flow
+    } finally {
+      isLoading.value = false
+    }
+  }
   
   // Fetch login help info
   try {
@@ -404,4 +424,4 @@ const useTestAccount = (type) => {
 .help-text li {
   margin-bottom: 0.25rem;
 }
-</style> 
+</style>

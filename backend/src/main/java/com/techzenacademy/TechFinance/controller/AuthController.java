@@ -45,6 +45,17 @@ public class AuthController {
         return ResponseEntity.ok("Logged out successfully");
     }
     
+    @PostMapping("/refresh-token")
+    public ResponseEntity<AuthResponse> refreshToken(@RequestBody Map<String, String> request) {
+        String refreshToken = request.get("refreshToken");
+        if (refreshToken == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        
+        AuthResponse response = authService.refreshToken(refreshToken);
+        return ResponseEntity.ok(response);
+    }
+    
     @GetMapping("/me")
     public ResponseEntity<AuthResponse.UserDto> getCurrentUser(@RequestHeader("Authorization") String token) {
         AuthResponse.UserDto user = authService.getCurrentUser(token);

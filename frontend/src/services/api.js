@@ -14,6 +14,9 @@ const api = {
     },
     register(userData) {
       return axios.post('/api/auth/register', userData)
+    },
+    refreshToken(refreshToken) {
+      return axios.post('/api/auth/refresh-token', { refreshToken })
     }
   },
   
@@ -82,4 +85,4 @@ const api = {
 // Initialize interceptors
 api.setupInterceptors()
 
-export default api 
+export default api
