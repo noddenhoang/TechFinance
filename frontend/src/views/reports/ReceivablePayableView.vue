@@ -32,7 +32,9 @@ const changeYear = () => {
 const fetchData = async () => {
   try {
     console.log('Starting data fetch...');
+    error.value = null;
     loading.value = true;
+    
     const data = await receivablePayable.getChartData({ year: filters.year });
     console.log('Data received:', data);
     
@@ -61,7 +63,29 @@ const fetchData = async () => {
     });
   } catch (err) {
     console.error('Error fetching report data:', err);
-    error.value = 'Không thể tải dữ liệu báo cáo: ' + (err.message || 'Unknown error');
+    
+    let errorMessage = 'Không thể tải dữ liệu báo cáo';
+    
+    if (err.response) {
+      // Server returned an error response
+      if (err.response.status === 401) {
+        errorMessage = 'Bạn không có quyền truy cập dữ liệu này';
+      } else if (err.response.status === 404) {
+        errorMessage = 'Không tìm thấy API endpoint';
+      } else if (err.response.status >= 500) {
+        errorMessage = 'Lỗi máy chủ: ' + (err.response.data?.message || 'Lỗi không xác định');
+      } else {
+        errorMessage = 'Lỗi: ' + (err.response.data?.message || err.message || 'Không xác định');
+      }
+    } else if (err.request) {
+      // No response received from server
+      errorMessage = 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra xem backend đã được khởi chạy chưa.';
+    } else {
+      // Something happened in setting up the request
+      errorMessage = 'Lỗi khi gửi yêu cầu: ' + (err.message || 'Không xác định');
+    }
+    
+    error.value = errorMessage;
     loading.value = false;
   }
 };
@@ -397,158 +421,173 @@ onMounted(() => {
 <template>
   <AppLayout>
     <template #title>
-      <h1 class="mb-3">8.1. Phải thu & phải trả</h1>
+      <h1 class="mb-3">Báo cáo Phải Thu/Phải Trả</h1>
     </template>
 
-    <!-- Filter section -->
-    <div class="card mb-4">
-      <div class="card-body">
+    <div class="content-container">
+      <h2>Báo cáo phải thu & phải trả</h2>
+      <p>Trang này hiển thị tổng hợp số liệu về các khoản đã thanh toán và chưa thanh toán (phải thu, phải trả).</p>
+      
+      <!-- Filter container with consistent design -->
+      <div class="filter-container">
+        <div class="filter-header">
+          <h3 class="card-title">
+            <i class="bi bi-funnel-fill"></i> Bộ lọc báo cáo
+          </h3>
+        </div>
+        <div class="filter-content">
+          <div class="filter-grid">
+            <div class="form-group">
+              <label class="form-label">Năm</label>
+              <select v-model="filters.year" class="form-select" @change="changeYear">
+                <option v-for="year in years" :key="year" :value="year">{{ year }}</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div v-if="loading" class="loading-spinner-container">
+        <div class="loading-spinner"></div>
+        <p>Đang tải dữ liệu báo cáo...</p>
+      </div>
+
+      <div v-else-if="error" class="error-message">
+        <i class="bi bi-exclamation-triangle"></i>
+        <p>{{ error }}</p>
+        <button @click="fetchData" class="btn-primary">
+          <i class="bi bi-arrow-repeat"></i> Thử lại
+        </button>
+      </div>
+
+      <div v-else-if="reportData.totalReceivable !== undefined" class="report-container">
+        <h2 class="report-section-title">8.1. Phải thu & phải trả</h2>
+        <p class="report-section-subtitle">Thông tin tổng hợp các khoản phải thu và phải trả năm {{ filters.year }}</p>
+        
         <div class="row">
-          <div class="col-md-4">
-            <label for="yearFilter" class="form-label">Năm:</label>
-            <select 
-              id="yearFilter" 
-              class="form-select" 
-              v-model="filters.year"
-              @change="changeYear"
-            >
-              <option v-for="year in years" :key="year" :value="year">{{ year }}</option>
-            </select>
-          </div>
-        </div>
-      </div>
-    </div>
+          <!-- Phải thu section -->
+          <div class="col-md-6">
+            <div class="card mb-4">
+              <div class="card-header">
+                <h3 class="card-title">Báo cáo phải thu</h3>
+              </div>
+              <div class="card-body">
+                <div class="table-responsive">
+                  <table class="table table-bordered">
+                    <thead class="table-light">
+                      <tr>
+                        <th scope="col">Khoản thanh toán đã nhận</th>
+                        <th scope="col">Khoản phải thu</th>
+                        <th scope="col">Tổng</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>{{ formatCurrency(reportData.totalReceived) }}</td>
+                        <td>{{ formatCurrency(reportData.totalPending) }}</td>
+                        <td>{{ formatCurrency(reportData.totalReceivable) }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
 
-    <div v-if="loading" class="text-center py-5">
-      <div class="spinner-border text-primary" role="status">
-        <span class="visually-hidden">Đang tải...</span>
-      </div>
-    </div>
+                <div class="row">
+                  <div class="col-md-12 text-center">
+                    <h6>% Thanh toán đã nhận</h6>
+                    <div class="chart-container" style="position: relative; height: 200px; width: 100%">
+                      <canvas ref="receivableChart"></canvas>
+                      <div class="chart-percent">{{ calculateReceivedPercentage() }}%</div>
+                    </div>
+                  </div>
+                </div>
 
-    <div v-else-if="error" class="alert alert-danger">
-      {{ error }}
-    </div>
-
-    <div v-else-if="reportData.totalReceivable !== undefined" class="row">
-      <!-- Phải thu section -->
-      <div class="col-md-6">
-        <div class="card mb-4">
-          <div class="card-body">
-            <div class="table-responsive">
-              <table class="table table-bordered">
-                <thead class="table-light">
-                  <tr>
-                    <th scope="col">Khoản thanh toán đã nhận</th>
-                    <th scope="col">Khoản phải thu</th>
-                    <th scope="col">Tổng</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>{{ formatCurrency(reportData.totalReceived) }}</td>
-                    <td>{{ formatCurrency(reportData.totalPending) }}</td>
-                    <td>{{ formatCurrency(reportData.totalReceivable) }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <div class="row">
-              <div class="col-md-12 text-center">
-                <h6>% Thanh toán đã nhận</h6>
-                <div class="chart-container" style="position: relative; height: 200px; width: 100%">
-                  <canvas ref="receivableChart"></canvas>
-                  <div class="chart-percent">{{ calculateReceivedPercentage() }}%</div>
+                <div class="mt-4">
+                  <h6>Các khoản phải thu mỗi tháng</h6>
+                  <div style="height: 200px">
+                    <canvas ref="receivableMonthlyChart"></canvas>
+                  </div>
                 </div>
               </div>
             </div>
-
-            <div class="mt-4">
-              <h6>Các khoản phải thu mỗi tháng</h6>
-              <div style="height: 200px">
-                <canvas ref="receivableMonthlyChart"></canvas>
-              </div>
-            </div>
           </div>
-        </div>
-      </div>
 
-      <!-- Phải trả section -->
-      <div class="col-md-6">
-        <div class="card mb-4">
-          <div class="card-body">
-            <div class="table-responsive">
-              <table class="table table-bordered">
-                <thead class="table-light">
-                  <tr>
-                    <th scope="col">Đã thanh toán</th>
-                    <th scope="col">Nợ phải trả</th>
-                    <th scope="col">Tổng</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>{{ formatCurrency(reportData.totalPaid) }}</td>
-                    <td>{{ formatCurrency(reportData.totalUnpaid) }}</td>
-                    <td>{{ formatCurrency(reportData.totalPayable) }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+          <!-- Phải trả section -->
+          <div class="col-md-6">
+            <div class="card mb-4">
+              <div class="card-header">
+                <h3 class="card-title">Báo cáo phải trả</h3>
+              </div>
+              <div class="card-body">
+                <div class="table-responsive">
+                  <table class="table table-bordered">
+                    <thead class="table-light">
+                      <tr>
+                        <th scope="col">Đã thanh toán</th>
+                        <th scope="col">Nợ phải trả</th>
+                        <th scope="col">Tổng</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>{{ formatCurrency(reportData.totalPaid) }}</td>
+                        <td>{{ formatCurrency(reportData.totalUnpaid) }}</td>
+                        <td>{{ formatCurrency(reportData.totalPayable) }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
 
-            <div class="row">
-              <div class="col-md-12 text-center">
-                <h6>% Chi phí đã thanh toán</h6>
-                <div class="chart-container" style="position: relative; height: 200px; width: 100%">
-                  <canvas ref="payableChart"></canvas>
-                  <div class="chart-percent">{{ calculatePaidPercentage() }}%</div>
+                <div class="row">
+                  <div class="col-md-12 text-center">
+                    <h6>% Chi phí đã thanh toán</h6>
+                    <div class="chart-container" style="position: relative; height: 200px; width: 100%">
+                      <canvas ref="payableChart"></canvas>
+                      <div class="chart-percent">{{ calculatePaidPercentage() }}%</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mt-4">
+                  <h6>Các khoản phải trả mỗi tháng</h6>
+                  <div style="height: 200px">
+                    <canvas ref="payableMonthlyChart"></canvas>
+                  </div>
                 </div>
               </div>
             </div>
-
-            <div class="mt-4">
-              <h6>Các khoản phải trả mỗi tháng</h6>
-              <div style="height: 200px">
-                <canvas ref="payableMonthlyChart"></canvas>
-              </div>
-            </div>
           </div>
         </div>
       </div>
-    </div>
-    
-    <div v-else class="alert alert-info">
-      Không có dữ liệu phải thu/trả để hiển thị.
+      
+      <div v-else class="no-data">
+        <i class="bi bi-info-circle"></i>
+        <p>Không có dữ liệu phải thu/trả để hiển thị.</p>
+        <button @click="fetchData" class="btn-primary">
+          <i class="bi bi-arrow-repeat"></i> Thử lại
+        </button>
+      </div>
     </div>
   </AppLayout>
 </template>
 
 <style scoped>
-.content-box {
+.content-container {
   background-color: white;
-  padding: 2rem;
+  padding: 1rem 2rem;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
 }
 
-.content-box h2 {
+.content-container h2 {
   color: #111827;
   margin-top: 0;
   margin-bottom: 1rem;
 }
 
-.content-box p {
+.content-container p {
   color: #6b7280;
   line-height: 1.5;
-}
-
-.placeholder-content {
-  margin-top: 2rem;
-  padding: 2rem;
-  background-color: #f9fafb;
-  border: 1px dashed #d1d5db;
-  border-radius: 6px;
-  text-align: center;
 }
 
 /* Filter styles */
@@ -626,5 +665,90 @@ h6 {
   margin-top: 1rem;
   margin-bottom: 0.5rem;
   font-weight: 600;
+}
+
+.report-container {
+  margin-top: 2rem;
+}
+
+.report-section-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 0.5rem;
+}
+
+.report-section-subtitle {
+  color: #6b7280;
+  margin-bottom: 2rem;
+}
+
+.card-header {
+  background-color: #f9fafb;
+  padding: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.card-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.loading-spinner-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #3498db;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.error-message, .no-data {
+  text-align: center;
+  padding: 2rem;
+  background-color: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  margin: 2rem 0;
+}
+
+.error-message i, .no-data i {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+  display: block;
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  cursor: pointer;
+  margin-top: 1rem;
+}
+
+.btn-primary:hover {
+  background-color: #2563eb;
 }
 </style> 

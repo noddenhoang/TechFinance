@@ -235,8 +235,8 @@ onMounted(() => {
             <div class="form-group">
               <label class="form-label">Loại báo cáo</label>
               <select v-model="filters.reportType" class="form-select" @change="loadData">
-                <option value="income">8.4. Thu nhập theo danh mục</option>
-                <option value="expense">8.5. Chi phí theo danh mục</option>
+                <option value="income">Thu nhập theo danh mục</option>
+                <option value="expense">Chi phí theo danh mục</option>
               </select>
             </div>
           </div>

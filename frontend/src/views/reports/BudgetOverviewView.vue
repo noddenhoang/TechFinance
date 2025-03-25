@@ -216,22 +216,24 @@ onMounted(() => {
     <template #page-title>Tổng quan ngân sách</template>
     
     <div class="content-container">
-      <h2>8.2. Tổng quan ngân sách</h2>
+      <h2>Tổng quan ngân sách</h2>
+      <p>Trang này hiển thị tổng quan về tình hình ngân sách theo năm.</p>
       
-      <!-- Report Filters -->
-      <div class="report-filters">
-        <h3>Bộ lọc báo cáo</h3>
-        <div class="filter-row">
-          <div class="filter-group">
-            <label for="yearFilter">Năm:</label>
-            <select 
-              id="yearFilter" 
-              v-model="filters.year" 
-              @change="changeYear"
-              class="select-input"
-            >
-              <option v-for="year in years" :key="year" :value="year">{{ year }}</option>
-            </select>
+      <!-- Filter container with consistent design -->
+      <div class="filter-container">
+        <div class="filter-header">
+          <h3 class="card-title">
+            <i class="bi bi-funnel-fill"></i> Bộ lọc báo cáo
+          </h3>
+        </div>
+        <div class="filter-content">
+          <div class="filter-grid">
+            <div class="form-group">
+              <label class="form-label">Năm</label>
+              <select v-model="filters.year" class="form-select" @change="changeYear">
+                <option v-for="year in years" :key="year" :value="year">{{ year }}</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
@@ -428,12 +430,131 @@ onMounted(() => {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-h2 {
+.content-container h2 {
   color: #111827;
   margin-top: 0;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
 }
 
+.content-container p {
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+/* Filter styles */
+.filter-container {
+  margin-top: 1.5rem;
+  margin-bottom: 2rem;
+  background-color: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.filter-header {
+  padding: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.card-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  margin: 0;
+}
+
+.card-title i {
+  margin-right: 0.5rem;
+}
+
+.filter-content {
+  padding: 1.5rem;
+}
+
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+.form-select {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+}
+
+/* Loading indicator */
+.loading-spinner-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #3498db;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Error message */
+.error-message {
+  text-align: center;
+  padding: 2rem;
+  background-color: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  margin: 2rem 0;
+}
+
+.error-message i {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+  display: block;
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  cursor: pointer;
+  margin-top: 1rem;
+}
+
+.btn-primary:hover {
+  background-color: #2563eb;
+}
+
+/* Budget Summary styles */
 .budget-summary-container {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -596,61 +717,6 @@ h2 {
   font-weight: 600;
 }
 
-/* Loading, error, and no data states */
-.loading-spinner-container,
-.error-message {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 4rem 0;
-  text-align: center;
-}
-
-.loading-spinner {
-  width: 40px;
-  height: 40px;
-  margin-bottom: 1rem;
-  border: 4px solid #e5e7eb;
-  border-radius: 50%;
-  border-top-color: #3b82f6;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.error-message {
-  color: #dc2626;
-}
-
-.error-message i {
-  font-size: 2rem;
-  margin-bottom: 1rem;
-}
-
-.btn-primary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border-radius: 0.375rem;
-  border: 1px solid #2563eb;
-  background-color: #2563eb;
-  color: white;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-primary:hover {
-  background-color: #1d4ed8;
-  border-color: #1d4ed8;
-}
-
 /* Responsive adjustments */
 @media (max-width: 1024px) {
   .budget-summary-container {
@@ -670,42 +736,5 @@ h2 {
   .budget-data-table {
     padding-left: 0;
   }
-}
-
-/* Add new styles */
-.report-filters {
-  background-color: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.report-filters h3 {
-  font-size: 1rem;
-  font-weight: 600;
-  margin-top: 0;
-  margin-bottom: 1rem;
-  color: #374151;
-}
-
-.filter-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.filter-group {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.select-input {
-  padding: 0.5rem;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  background-color: white;
-  min-width: 120px;
 }
 </style> 

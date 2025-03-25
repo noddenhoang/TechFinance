@@ -1,17 +1,5 @@
 import { api } from './api'
 
-// Demo data for fallback if API is not available
-const DEMO_DATA = {
-  totalReceived: 65000000,
-  totalPending: 0,
-  totalReceivable: 65000000,
-  totalPaid: 32500000,
-  totalUnpaid: 0,
-  totalPayable: 32500000,
-  receivablesByMonth: Array.from({ length: 12 }, (_, i) => ({ month: i + 1, amount: 0 })),
-  payablesByMonth: Array.from({ length: 12 }, (_, i) => ({ month: i + 1, amount: 0 }))
-};
-
 /**
  * Service for interacting with the Receivable/Payable Reports API
  */
@@ -49,10 +37,7 @@ export const receivablePayable = {
       } else if (error.request) {
         console.error('No response received:', error.request);
       }
-      
-      // Return demo data so UI can render something
-      console.log('Returning demo data as fallback');
-      return DEMO_DATA;
+      throw error;
     }
   },
   
