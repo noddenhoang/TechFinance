@@ -38,6 +38,9 @@ const sorting = reactive({
 const showBudgetDetailsModal = ref(false);
 const currentBudget = ref({});
 
+// Define required fields for any forms
+const requiredFields = ['categoryId', 'year', 'month', 'amount'];
+
 // Notification
 const notification = reactive({
   show: false,
@@ -464,5 +467,11 @@ onMounted(() => {
   color: #6b7280;
   text-align: center;
   margin-bottom: 1rem;
+}
+
+/* Add this in your component's <style> section */
+.required-field::after {
+  content: " *";
+  color: red;
 }
 </style>

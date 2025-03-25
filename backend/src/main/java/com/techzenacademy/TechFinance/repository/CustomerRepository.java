@@ -13,6 +13,7 @@ import java.util.Optional;
 public interface CustomerRepository extends JpaRepository<Customer, Integer> {
     List<Customer> findByIsActiveTrue();
     boolean existsByEmail(String email);
+    boolean existsByIdentification(String identification);
     Optional<Customer> findByEmail(String email);
     
     @Query("SELECT c FROM Customer c WHERE " +

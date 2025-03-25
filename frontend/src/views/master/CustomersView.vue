@@ -56,12 +56,20 @@ const modalCustomer = reactive({
   address: '',
   taxCode: '', // Thêm thuộc tính taxCode
   notes: '',
+  identification: '', // Thêm thuộc tính identification
   isActive: true
 });
+
+// Define required fields
+const requiredFields = ['name'];
+
+// Change variable name from errors to modalErrors to match what's used in the template
 const modalErrors = reactive({
   name: '',
   email: '',
-  phone: '' // Thêm trường lỗi cho số điện thoại
+  phone: '',
+  identification: '', // Add missing fields
+  address: ''
 });
 
 // Thêm hàm validate số điện thoại
@@ -224,10 +232,13 @@ function openAddModal() {
   modalCustomer.address = '';
   modalCustomer.taxCode = ''; // Thêm dòng này
   modalCustomer.notes = '';
+  modalCustomer.identification = ''; // Thêm dòng này
   modalCustomer.isActive = true;
   modalErrors.name = '';
   modalErrors.email = '';
   modalErrors.phone = '';
+  modalErrors.identification = '';
+  modalErrors.address = '';
   showModal.value = true;
   
   // Focus vào input sau khi modal hiển thị
@@ -246,10 +257,13 @@ function openEditModal(customer) {
   modalCustomer.address = customer.address || '';
   modalCustomer.taxCode = customer.taxCode || ''; // Thêm dòng này
   modalCustomer.notes = customer.notes || '';
+  modalCustomer.identification = customer.identification || ''; // Thêm dòng này
   modalCustomer.isActive = customer.isActive;
   modalErrors.name = '';
   modalErrors.email = '';
   modalErrors.phone = '';
+  modalErrors.identification = '';
+  modalErrors.address = '';
   showModal.value = true;
   
   // Focus vào input sau khi modal hiển thị
@@ -269,23 +283,35 @@ async function saveCustomer() {
   modalErrors.name = '';
   modalErrors.email = '';
   modalErrors.phone = '';
+  modalErrors.identification = '';
+  modalErrors.address = '';
   
   // Validate
   let isValid = true;
   
-  if (!modalCustomer.name.trim()) {
+  if (!modalCustomer.name || !modalCustomer.name.trim()) {
     modalErrors.name = 'Tên khách hàng không được để trống';
     isValid = false;
   }
   
-  if (modalCustomer.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(modalCustomer.email)) {
+  if (!modalCustomer.email || !modalCustomer.email.trim()) {
+    modalErrors.email = 'Email không được để trống';
+    isValid = false;
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(modalCustomer.email)) {
     modalErrors.email = 'Email không hợp lệ';
     isValid = false;
   }
   
-  // Kiểm tra nếu số điện thoại đã nhập thì phải đúng 10 số
-  if (modalCustomer.phone && modalCustomer.phone.length !== 10) {
+  if (!modalCustomer.phone || !modalCustomer.phone.trim()) {
+    modalErrors.phone = 'Số điện thoại không được để trống';
+    isValid = false;
+  } else if (modalCustomer.phone.length !== 10) {
     modalErrors.phone = 'Số điện thoại phải có đúng 10 chữ số';
+    isValid = false;
+  }
+  
+  if (!modalCustomer.address || !modalCustomer.address.trim()) {
+    modalErrors.address = 'Địa chỉ không được để trống';
     isValid = false;
   }
   
@@ -293,63 +319,58 @@ async function saveCustomer() {
   
   saving.value = true;
   try {
+    // Prepare the data to match exactly what the backend expects
+    const requestData = {
+      name: modalCustomer.name.trim(),
+      email: modalCustomer.email.trim(),
+      phone: modalCustomer.phone.trim(),
+      address: modalCustomer.address.trim(),
+      identification: modalCustomer.identification ? modalCustomer.identification.trim() : null,
+      taxCode: modalCustomer.taxCode ? modalCustomer.taxCode.trim() : null,
+      notes: modalCustomer.notes ? modalCustomer.notes.trim() : null,
+      isActive: modalCustomer.isActive !== undefined ? modalCustomer.isActive : true
+    };
+    
     if (editMode.value) {
-      await customers.update(modalCustomer.id, {
-        name: modalCustomer.name,
-        email: modalCustomer.email,
-        phone: modalCustomer.phone,
-        address: modalCustomer.address,
-        taxCode: modalCustomer.taxCode, // Thêm vào request
-        notes: modalCustomer.notes,
-        isActive: modalCustomer.isActive
-      });
+      await customers.update(modalCustomer.id, requestData);
       showNotification('Cập nhật khách hàng thành công');
       
       // Nếu đang xem chi tiết khách hàng này thì cập nhật lại thông tin chi tiết
       if (selectedCustomer.value && selectedCustomer.value.id === modalCustomer.id) {
         selectedCustomer.value = await customers.getById(modalCustomer.id);
       }
-      
-      // Đóng modal trước khi load lại dữ liệu
-      closeModal();
-      
-      // Tải lại trang hiện tại
-      await loadCustomers(pagination.currentPage);
     } else {
-      const newCustomer = await customers.create({
-        name: modalCustomer.name,
-        email: modalCustomer.email,
-        phone: modalCustomer.phone,
-        address: modalCustomer.address,
-        taxCode: modalCustomer.taxCode, // Thêm vào request
-        notes: modalCustomer.notes,
-        isActive: modalCustomer.isActive
-      });
+      const newCustomer = await customers.create(requestData);
       showNotification('Tạo khách hàng mới thành công');
-      
-      // Đóng modal trước khi load lại dữ liệu
-      closeModal();
-      
-      // Tải lại từ trang hiện tại thay vì về trang đầu tiên
-      await loadCustomers(pagination.currentPage);
     }
+    
+    // Đóng modal trước khi load lại dữ liệu
+    closeModal();
+    
+    // Tải lại từ trang hiện tại
+    await loadCustomers(pagination.currentPage);
   } catch (error) {
     console.error('Lỗi khi lưu khách hàng:', error);
     
-    if (error.response?.status === 400) {
-      if (error.response.data.message?.includes('email already exists')) {
-        modalErrors.email = 'Email đã tồn tại';
+    if (error.response) {
+      const status = error.response.status;
+      const message = error.response.data?.message || '';
+      
+      if (status === 400) {
+        if (message.includes('email already exists')) {
+          modalErrors.email = 'Email đã tồn tại';
+        } else if (message.includes('identification already exists')) {
+          modalErrors.identification = 'CCCD/CMND đã tồn tại';
+        } else {
+          showNotification(message || 'Dữ liệu không hợp lệ', 'error');
+        }
+      } else if (status === 500) {
+        showNotification('Lỗi máy chủ, vui lòng kiểm tra dữ liệu và thử lại', 'error');
       } else {
-        showNotification(
-          error.response.data.message || 'Dữ liệu không hợp lệ',
-          'error'
-        );
+        showNotification('Có lỗi xảy ra, vui lòng thử lại sau', 'error');
       }
     } else {
-      showNotification(
-        'Có lỗi xảy ra, vui lòng thử lại sau',
-        'error'
-      );
+      showNotification('Không thể kết nối đến máy chủ', 'error');
     }
   } finally {
     saving.value = false;
@@ -404,6 +425,18 @@ async function deleteCustomer() {
     deleting.value = false;
   }
 }
+
+// Helper function to get customer details more safely with null checks
+function getCustomerName(customerId) {
+  if (!customerId) return 'Không có khách hàng';
+  const customer = customersList.value.find(c => c.id === customerId);
+  return customer ? customer.name : 'Không xác định';
+}
+
+// Safe access helper for the selected customer
+const safeSelectedCustomer = computed(() => {
+  return selectedCustomer.value || {};
+});
 </script>
 
 <template>
@@ -596,12 +629,12 @@ async function deleteCustomer() {
             <p>Đang tải thông tin chi tiết...</p>
           </div>
           
-          <div v-else-if="selectedCustomer" class="customer-details-content">
+          <div v-else-if="safeSelectedCustomer" class="customer-details-content">
             <div class="detail-header">
               <div class="customer-avatar">
                 <i class="bi bi-person-circle"></i>
               </div>
-              <h3 class="customer-full-name">{{ selectedCustomer.name }}</h3>
+              <h3 class="customer-full-name">{{ safeSelectedCustomer.name || 'Khách hàng' }}</h3>
             </div>
             
             <div class="detail-section">
@@ -612,7 +645,7 @@ async function deleteCustomer() {
                   <i class="bi bi-envelope"></i>
                   Email:
                 </div>
-                <div class="detail-value">{{ selectedCustomer.email || 'Chưa cung cấp' }}</div>
+                <div class="detail-value">{{ safeSelectedCustomer.email || 'Chưa cung cấp' }}</div>
               </div>
               
               <div class="detail-row">
@@ -620,7 +653,7 @@ async function deleteCustomer() {
                   <i class="bi bi-telephone"></i>
                   Số điện thoại:
                 </div>
-                <div class="detail-value">{{ selectedCustomer.phone || 'Chưa cung cấp' }}</div>
+                <div class="detail-value">{{ safeSelectedCustomer.phone || 'Chưa cung cấp' }}</div>
               </div>
               
               <div class="detail-row">
@@ -628,7 +661,7 @@ async function deleteCustomer() {
                   <i class="bi bi-geo-alt"></i>
                   Địa chỉ:
                 </div>
-                <div class="detail-value">{{ selectedCustomer.address || 'Chưa cung cấp' }}</div>
+                <div class="detail-value">{{ safeSelectedCustomer.address || 'Chưa cung cấp' }}</div>
               </div>
             </div>
             
@@ -641,9 +674,9 @@ async function deleteCustomer() {
                   Trạng thái:
                 </div>
                 <div class="detail-value">
-                  <span :class="['status-badge', selectedCustomer.isActive ? 'active' : 'inactive']">
-                    <i :class="[selectedCustomer.isActive ? 'bi bi-check-circle' : 'bi bi-x-circle']"></i>
-                    {{ selectedCustomer.isActive ? 'Hoạt động' : 'Không hoạt động' }}
+                  <span :class="['status-badge', safeSelectedCustomer.isActive ? 'active' : 'inactive']">
+                    <i :class="[safeSelectedCustomer.isActive ? 'bi bi-check-circle' : 'bi bi-x-circle']"></i>
+                    {{ safeSelectedCustomer.isActive ? 'Hoạt động' : 'Không hoạt động' }}
                   </span>
                 </div>
               </div>
@@ -653,14 +686,21 @@ async function deleteCustomer() {
                   <i class="bi bi-card-text"></i>
                   Ghi chú:
                 </div>
-                <div class="detail-value">{{ selectedCustomer.notes || 'Không có ghi chú' }}</div>
+                <div class="detail-value">{{ safeSelectedCustomer.notes || 'Không có ghi chú' }}</div>
               </div>
               <div class="detail-row">
                 <div class="detail-label">
                   <i class="bi bi-receipt"></i>
                   Mã số thuế:
                 </div>
-                <div class="detail-value">{{ selectedCustomer.taxCode || 'Chưa cung cấp' }}</div>
+                <div class="detail-value">{{ safeSelectedCustomer.taxCode || 'Chưa cung cấp' }}</div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">
+                  <i class="bi bi-card-text"></i>
+                  Identification:
+                </div>
+                <div class="detail-value">{{ safeSelectedCustomer.identification || 'Chưa cung cấp' }}</div>
               </div>
             </div>
           </div>
@@ -680,71 +720,43 @@ async function deleteCustomer() {
         
         <div class="modal-body">
           <div class="form-group">
-            <label class="form-label">Tên khách hàng</label>
-            <input
-              v-model="modalCustomer.name"
-              type="text"
-              class="form-input"
-              name="customerName"
-              :class="{ 'is-invalid': modalErrors.name }"
-              placeholder="Nhập tên khách hàng"
-            />
-            <div v-if="modalErrors.name" class="invalid-feedback">{{ modalErrors.name }}</div>
+            <label class="form-label required">Tên</label>
+            <input v-model="modalCustomer.name" name="customerName" type="text" class="form-input" :class="{'error': modalErrors.name}" placeholder="Nhập tên khách hàng">
+            <div v-if="modalErrors.name" class="form-error">{{ modalErrors.name }}</div>
           </div>
           
           <div class="form-group">
-            <label class="form-label">Email</label>
-            <input
-              v-model="modalCustomer.email"
-              type="email"
-              class="form-input"
-              :class="{ 'is-invalid': modalErrors.email }"
-              placeholder="Nhập email khách hàng"
-            />
-            <div v-if="modalErrors.email" class="invalid-feedback">{{ modalErrors.email }}</div>
+            <label class="form-label required">Email</label>
+            <input v-model="modalCustomer.email" type="email" class="form-input" :class="{'error': modalErrors.email}" placeholder="Nhập địa chỉ email">
+            <div v-if="modalErrors.email" class="form-error">{{ modalErrors.email }}</div>
           </div>
           
           <div class="form-group">
-            <label class="form-label">Số điện thoại</label>
-            <input
-              v-model="modalCustomer.phone"
-              type="tel"
-              class="form-input"
-              :class="{ 'is-invalid': modalErrors.phone }"
-              placeholder="Nhập số điện thoại khách hàng"
-              maxlength="10"
-              @input="validatePhone"
-            />
-            <div v-if="modalErrors.phone" class="invalid-feedback">{{ modalErrors.phone }}</div>
+            <label class="form-label required">Số điện thoại</label>
+            <input v-model="modalCustomer.phone" type="tel" class="form-input" :class="{'error': modalErrors.phone}" placeholder="Nhập số điện thoại" @input="validatePhone">
+            <div v-if="modalErrors.phone" class="form-error">{{ modalErrors.phone }}</div>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">CCCD/CMND</label>
+            <input v-model="modalCustomer.identification" type="text" class="form-input" :class="{'error': modalErrors.identification}" placeholder="Nhập số CCCD (nếu có)">
+            <div v-if="modalErrors.identification" class="form-error">{{ modalErrors.identification }}</div>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label required">Địa chỉ</label>
+            <textarea v-model="modalCustomer.address" class="form-textarea" :class="{'error': modalErrors.address}" rows="3" placeholder="Nhập địa chỉ khách hàng"></textarea>
+            <div v-if="modalErrors.address" class="form-error">{{ modalErrors.address }}</div>
           </div>
           
           <div class="form-group">
             <label class="form-label">Mã số thuế</label>
-            <input
-              v-model="modalCustomer.taxCode"
-              type="text"
-              class="form-input"
-              placeholder="Nhập mã số thuế (nếu có)"
-            />
-          </div>
-          
-          <div class="form-group">
-            <label class="form-label">Địa chỉ</label>
-            <textarea
-              v-model="modalCustomer.address"
-              class="form-input"
-              placeholder="Nhập địa chỉ khách hàng"
-              rows="3"
-            ></textarea>
+            <input v-model="modalCustomer.taxCode" type="text" class="form-input" placeholder="Nhập mã số thuế (nếu có)">
           </div>
           
           <div class="form-group">
             <label class="form-label">Ghi chú</label>
-            <textarea
-              v-model="modalCustomer.notes"
-              class="form-input"
-              placeholder="Nhập ghi chú"
-            ></textarea>
+            <textarea v-model="modalCustomer.notes" class="form-textarea" rows="3" placeholder="Nhập ghi chú (nếu có)"></textarea>
           </div>
           
           <div class="form-group">
@@ -762,8 +774,9 @@ async function deleteCustomer() {
             Hủy
           </button>
           <button @click="saveCustomer" class="btn-primary" :disabled="saving">
-            <i class="bi bi-save"></i>
-            Lưu
+            <i v-if="saving" class="bi bi-arrow-repeat spinner"></i>
+            <i v-else class="bi bi-save"></i>
+            {{ saving ? 'Đang lưu...' : 'Lưu' }}
           </button>
         </div>
       </div>
@@ -785,7 +798,7 @@ async function deleteCustomer() {
           </div>
           <h4 class="confirm-title">Bạn có chắc chắn muốn xóa?</h4>
           <p class="confirm-message">
-            Khách hàng "<strong>{{ customerToDelete?.name }}</strong>" sẽ bị xóa vĩnh viễn.
+            Khách hàng "<strong>{{ customerToDelete?.name || 'Không xác định' }}</strong>" sẽ bị xóa vĩnh viễn.
             <br>Hành động này không thể hoàn tác.
           </p>
           
@@ -829,4 +842,10 @@ async function deleteCustomer() {
 <style scoped>
 /* Component-specific styles only */
 /* All common styles have been moved to assets/styles/common.css */
+
+/* Add this in your component's <style> section */
+.required-field::after {
+  content: " *";
+  color: red;
+}
 </style>

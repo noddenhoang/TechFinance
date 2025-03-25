@@ -69,7 +69,7 @@ public class CustomerController {
     @PreAuthorize("hasRole('ROLE_ADMIN')")
     public ResponseEntity<CustomerDTO> updateCustomer(
             @PathVariable("id") Integer id, 
-            @RequestBody CustomerRequest request) {
+            @Valid @RequestBody CustomerRequest request) {
         return ResponseEntity.ok(customerService.updateCustomer(id, request));
     }
     

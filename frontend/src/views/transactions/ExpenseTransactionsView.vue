@@ -588,6 +588,14 @@ function getSupplierTooltip(supplier) {
   
   return tooltip;
 }
+
+// Add a style block for required field indicators and define required fields
+const requiredFields = ['categoryId', 'amount', 'transactionDate'];
+
+// Add a computed property for safe access to selectedTransaction
+const safeSelectedTransaction = computed(() => {
+  return selectedTransaction.value || {};
+});
 </script>
 
 <template>
@@ -911,8 +919,8 @@ function getSupplierTooltip(supplier) {
             <div class="transaction-avatar">
               <i class="bi bi-cash-coin"></i>
             </div>
-            <h3 class="transaction-amount">{{ formatAmountDisplay(selectedTransaction.amount) }}</h3>
-            <p class="transaction-date">{{ formatDate(selectedTransaction.transactionDate) }}</p>
+            <h3 class="transaction-amount">{{ formatAmountDisplay(safeSelectedTransaction.amount || 0) }}</h3>
+            <p class="transaction-date">{{ formatDate(safeSelectedTransaction.transactionDate) }}</p>
           </div>
 
           <div class="detail-section">
@@ -924,7 +932,7 @@ function getSupplierTooltip(supplier) {
                 Danh mục:
               </div>
               <div class="detail-value">
-                {{ selectedTransaction.categoryName }}
+                {{ safeSelectedTransaction.categoryName }}
               </div>
             </div>
             
@@ -934,7 +942,7 @@ function getSupplierTooltip(supplier) {
                 Nhà cung cấp:
               </div>
               <div class="detail-value">
-                {{ selectedTransaction.supplierName || 'Không có' }}
+                {{ safeSelectedTransaction.supplierName || 'Không có' }}
               </div>
             </div>
             
@@ -944,9 +952,9 @@ function getSupplierTooltip(supplier) {
                 Trạng thái:
               </div>
               <div class="detail-value">
-                <span :class="['status-badge', selectedTransaction.paymentStatus === 'PAID' ? 'active' : 'pending']">
-                  <i :class="[selectedTransaction.paymentStatus === 'PAID' ? 'bi bi-check-circle' : 'bi bi-hourglass-split']"></i>
-                  {{ formatPaymentStatus(selectedTransaction.paymentStatus) }}
+                <span :class="['status-badge', safeSelectedTransaction.paymentStatus === 'PAID' ? 'active' : 'pending']">
+                  <i :class="[safeSelectedTransaction.paymentStatus === 'PAID' ? 'bi bi-check-circle' : 'bi bi-hourglass-split']"></i>
+                  {{ formatPaymentStatus(safeSelectedTransaction.paymentStatus) }}
                 </span>
               </div>
             </div>
@@ -957,7 +965,7 @@ function getSupplierTooltip(supplier) {
                 Số tham chiếu:
               </div>
               <div class="detail-value">
-                {{ selectedTransaction.referenceNo || 'Không có' }}
+                {{ safeSelectedTransaction.referenceNo || 'Không có' }}
               </div>
             </div>
             
@@ -967,17 +975,17 @@ function getSupplierTooltip(supplier) {
                 Mô tả:
               </div>
               <div class="detail-value description-value">
-                {{ selectedTransaction.description || 'Không có mô tả' }}
+                {{ safeSelectedTransaction.description || 'Không có mô tả' }}
               </div>
             </div>
           </div>
           
           <div v-if="isAdmin" class="modal-actions">
-            <button @click="openEditModal(selectedTransaction)" class="btn-primary">
+            <button @click="openEditModal(safeSelectedTransaction)" class="btn-primary">
               <i class="bi bi-pencil-square"></i>
               Sửa
             </button>
-            <button @click="openDeleteModal(selectedTransaction)" class="btn-danger">
+            <button @click="openDeleteModal(safeSelectedTransaction)" class="btn-danger">
               <i class="bi bi-trash"></i>
               Xóa
             </button>
@@ -1256,7 +1264,7 @@ function getSupplierTooltip(supplier) {
   color: #1e293b;
 }
 
-.detail-label i {
+detail-label i {
   color: #6366f1;
 }
 
@@ -1307,5 +1315,11 @@ function getSupplierTooltip(supplier) {
     flex-direction: column;
     gap: 1rem;
   }
+}
+
+/* Add this in your component's <style> section */
+.required-field::after {
+  content: " *";
+  color: red;
 }
 </style>

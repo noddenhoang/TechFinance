@@ -61,6 +61,9 @@ const modalErrors = reactive({
   name: ''
 })
 
+// Define required fields
+const requiredFields = ['name'];
+
 // Delete modal state
 const showDeleteModal = ref(false)
 const categoryToDelete = ref(null)
@@ -508,7 +511,7 @@ const statusOptions = [
         <div class="modal-body">
           <form @submit.prevent="saveCategory">
             <div class="form-group">
-              <label class="form-label required">
+              <label class="form-label required required-field">
                 Tên danh mục
               </label>
               <input
@@ -635,4 +638,10 @@ const statusOptions = [
 <style scoped>
 /* Component-specific styles only */
 /* All common styles have been moved to assets/styles/common.css */
+
+/* Add this in your component's <style> section */
+.required-field::after {
+  content: " *";
+  color: red;
+}
 </style>

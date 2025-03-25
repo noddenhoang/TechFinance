@@ -424,4 +424,8 @@ const useTestAccount = (type) => {
 .help-text li {
   margin-bottom: 0.25rem;
 }
+
+.required-field {
+  color: red;
+}
 </style>

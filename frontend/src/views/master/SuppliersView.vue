@@ -57,11 +57,16 @@ const modalSupplier = reactive({
   notes: '',
   isActive: true
 });
-const modalErrors = reactive({
+const errors = reactive({
   name: '',
   email: '',
-  phone: ''
+  phone: '',
+  address: ''
 });
+
+// Add a list of required fields
+const requiredFields = ['name'];
+
 const saving = ref(false);
 
 // States for Delete modal
@@ -207,9 +212,10 @@ function openAddModal() {
   modalSupplier.taxCode = '';
   modalSupplier.notes = '';
   modalSupplier.isActive = true;
-  modalErrors.name = '';
-  modalErrors.email = '';
-  modalErrors.phone = '';
+  errors.name = '';
+  errors.email = '';
+  errors.phone = '';
+  errors.address = '';
   showModal.value = true;
   
   // Focus vào input sau khi modal hiển thị
@@ -229,9 +235,10 @@ function openEditModal(supplier) {
   modalSupplier.taxCode = supplier.taxCode || '';
   modalSupplier.notes = supplier.notes || '';
   modalSupplier.isActive = supplier.isActive;
-  modalErrors.name = '';
-  modalErrors.email = '';
-  modalErrors.phone = '';
+  errors.name = '';
+  errors.email = '';
+  errors.phone = '';
+  errors.address = '';
   showModal.value = true;
   
   // Focus vào input sau khi modal hiển thị
@@ -269,35 +276,36 @@ function validatePhone() {
   
   // Hiển thị lỗi nếu đã nhập nhưng không đủ 10 số
   if (modalSupplier.phone && modalSupplier.phone.length < 10) {
-    modalErrors.phone = 'Số điện thoại phải có đúng 10 chữ số';
+    errors.phone = 'Số điện thoại phải có đúng 10 chữ số';
   } else {
-    modalErrors.phone = '';
+    errors.phone = '';
   }
 }
 
 // Save supplier (create or update)
 async function saveSupplier() {
   // Reset errors
-  modalErrors.name = '';
-  modalErrors.email = '';
-  modalErrors.phone = '';
+  errors.name = '';
+  errors.email = '';
+  errors.phone = '';
+  errors.address = '';
   
   // Validate
   let isValid = true;
   
   if (!modalSupplier.name.trim()) {
-    modalErrors.name = 'Tên nhà cung cấp không được để trống';
+    errors.name = 'Tên nhà cung cấp không được để trống';
     isValid = false;
   }
   
   if (modalSupplier.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(modalSupplier.email)) {
-    modalErrors.email = 'Email không hợp lệ';
+    errors.email = 'Email không hợp lệ';
     isValid = false;
   }
   
   // Kiểm tra nếu số điện thoại đã nhập thì phải đúng 10 số
   if (modalSupplier.phone && modalSupplier.phone.length !== 10) {
-    modalErrors.phone = 'Số điện thoại phải có đúng 10 chữ số';
+    errors.phone = 'Số điện thoại phải có đúng 10 chữ số';
     isValid = false;
   }
   
@@ -352,7 +360,7 @@ async function saveSupplier() {
       showNotification(error.message, 'error');
     } else if (error.response?.status === 400) {
       if (error.response.data.message?.includes('email already exists')) {
-        modalErrors.email = 'Email đã tồn tại';
+        errors.email = 'Email đã tồn tại';
       } else {
         showNotification(
           error.response.data.message || 'Dữ liệu không hợp lệ',
@@ -435,6 +443,11 @@ function sortBy(field) {
   // Load lại dữ liệu với sắp xếp mới
   loadSuppliers(pagination.currentPage);
 }
+
+// Safe access helper for the selected supplier
+const safeSelectedSupplier = computed(() => {
+  return selectedSupplier.value || {};
+});
 </script>
 
 <template>
@@ -631,12 +644,12 @@ function sortBy(field) {
             <p>Đang tải thông tin chi tiết...</p>
           </div>
           
-          <div v-else-if="selectedSupplier" class="supplier-details-content">
+          <div v-else-if="safeSelectedSupplier" class="supplier-details-content">
             <div class="detail-header">
               <div class="supplier-avatar">
                 <i class="bi bi-building"></i>
               </div>
-              <h3 class="supplier-full-name">{{ selectedSupplier.name }}</h3>
+              <h3 class="supplier-full-name">{{ safeSelectedSupplier.name || 'Nhà cung cấp' }}</h3>
             </div>
             
             <div class="detail-section">
@@ -647,7 +660,7 @@ function sortBy(field) {
                   <i class="bi bi-envelope"></i>
                   Email:
                 </div>
-                <div class="detail-value">{{ selectedSupplier.email || 'Chưa cung cấp' }}</div>
+                <div class="detail-value">{{ safeSelectedSupplier.email || 'Chưa cung cấp' }}</div>
               </div>
               
               <div class="detail-row">
@@ -655,7 +668,7 @@ function sortBy(field) {
                   <i class="bi bi-telephone"></i>
                   Số điện thoại:
                 </div>
-                <div class="detail-value">{{ selectedSupplier.phone || 'Chưa cung cấp' }}</div>
+                <div class="detail-value">{{ safeSelectedSupplier.phone || 'Chưa cung cấp' }}</div>
               </div>
               
               <div class="detail-row">
@@ -663,7 +676,7 @@ function sortBy(field) {
                   <i class="bi bi-receipt"></i>
                   Mã số thuế:
                 </div>
-                <div class="detail-value">{{ selectedSupplier.taxCode || 'Chưa cung cấp' }}</div>
+                <div class="detail-value">{{ safeSelectedSupplier.taxCode || 'Chưa cung cấp' }}</div>
               </div>
               
               <div class="detail-row">
@@ -671,7 +684,7 @@ function sortBy(field) {
                   <i class="bi bi-geo-alt"></i>
                   Địa chỉ:
                 </div>
-                <div class="detail-value">{{ selectedSupplier.address || 'Chưa cung cấp' }}</div>
+                <div class="detail-value">{{ safeSelectedSupplier.address || 'Chưa cung cấp' }}</div>
               </div>
             </div>
             
@@ -684,9 +697,9 @@ function sortBy(field) {
                   Trạng thái:
                 </div>
                 <div class="detail-value">
-                  <span :class="['status-badge', selectedSupplier.isActive ? 'active' : 'inactive']">
-                    <i :class="[selectedSupplier.isActive ? 'bi bi-check-circle' : 'bi bi-x-circle']"></i>
-                    {{ selectedSupplier.isActive ? 'Hoạt động' : 'Không hoạt động' }}
+                  <span :class="['status-badge', safeSelectedSupplier.isActive ? 'active' : 'inactive']">
+                    <i :class="[safeSelectedSupplier.isActive ? 'bi bi-check-circle' : 'bi bi-x-circle']"></i>
+                    {{ safeSelectedSupplier.isActive ? 'Hoạt động' : 'Không hoạt động' }}
                   </span>
                 </div>
               </div>
@@ -696,7 +709,7 @@ function sortBy(field) {
                   <i class="bi bi-card-text"></i>
                   Ghi chú:
                 </div>
-                <div class="detail-value">{{ selectedSupplier.notes || 'Không có ghi chú' }}</div>
+                <div class="detail-value">{{ safeSelectedSupplier.notes || 'Không có ghi chú' }}</div>
               </div>
             </div>
           </div>
@@ -716,71 +729,37 @@ function sortBy(field) {
         
         <div class="modal-body">
           <div class="form-group">
-            <label class="form-label">Tên nhà cung cấp</label>
-            <input
-              v-model="modalSupplier.name"
-              type="text"
-              class="form-input"
-              name="supplierName"
-              :class="{ 'is-invalid': modalErrors.name }"
-              placeholder="Nhập tên nhà cung cấp"
-            />
-            <div v-if="modalErrors.name" class="invalid-feedback">{{ modalErrors.name }}</div>
+            <label class="form-label required">Tên</label>
+            <input v-model="modalSupplier.name" name="supplierName" type="text" class="form-input" :class="{'error': errors.name}" placeholder="Nhập tên nhà cung cấp">
+            <div v-if="errors.name" class="form-error">{{ errors.name }}</div>
           </div>
           
           <div class="form-group">
-            <label class="form-label">Email</label>
-            <input
-              v-model="modalSupplier.email"
-              type="email"
-              class="form-input"
-              :class="{ 'is-invalid': modalErrors.email }"
-              placeholder="Nhập email"
-            />
-            <div v-if="modalErrors.email" class="invalid-feedback">{{ modalErrors.email }}</div>
+            <label class="form-label required">Email</label>
+            <input v-model="modalSupplier.email" type="email" class="form-input" :class="{'error': errors.email}" placeholder="Nhập địa chỉ email">
+            <div v-if="errors.email" class="form-error">{{ errors.email }}</div>
           </div>
           
           <div class="form-group">
-            <label class="form-label">Số điện thoại</label>
-            <input
-              v-model="modalSupplier.phone"
-              type="tel"
-              class="form-input"
-              :class="{ 'is-invalid': modalErrors.phone }"
-              placeholder="Nhập số điện thoại nhà cung cấp"
-              maxlength="10"
-              @input="validatePhone"
-            />
-            <div v-if="modalErrors.phone" class="invalid-feedback">{{ modalErrors.phone }}</div>
+            <label class="form-label required">Số điện thoại</label>
+            <input v-model="modalSupplier.phone" type="tel" class="form-input" :class="{'error': errors.phone}" placeholder="Nhập số điện thoại" @input="validatePhone">
+            <div v-if="errors.phone" class="form-error">{{ errors.phone }}</div>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label required">Địa chỉ</label>
+            <textarea v-model="modalSupplier.address" class="form-textarea" :class="{'error': errors.address}" rows="3" placeholder="Nhập địa chỉ nhà cung cấp"></textarea>
+            <div v-if="errors.address" class="form-error">{{ errors.address }}</div>
           </div>
           
           <div class="form-group">
             <label class="form-label">Mã số thuế</label>
-            <input
-              v-model="modalSupplier.taxCode"
-              type="text"
-              class="form-input"
-              placeholder="Nhập mã số thuế (nếu có)"
-            />
-          </div>
-          
-          <div class="form-group">
-            <label class="form-label">Địa chỉ</label>
-            <textarea
-              v-model="modalSupplier.address"
-              class="form-input"
-              placeholder="Nhập địa chỉ nhà cung cấp"
-              rows="3"
-            ></textarea>
+            <input v-model="modalSupplier.taxCode" type="text" class="form-input" placeholder="Nhập mã số thuế (nếu có)">
           </div>
           
           <div class="form-group">
             <label class="form-label">Ghi chú</label>
-            <textarea
-              v-model="modalSupplier.notes"
-              class="form-input"
-              placeholder="Nhập ghi chú (nếu có)"
-            ></textarea>
+            <textarea v-model="modalSupplier.notes" class="form-textarea" rows="3" placeholder="Nhập ghi chú (nếu có)"></textarea>
           </div>
           
           <div class="form-group">
@@ -822,7 +801,7 @@ function sortBy(field) {
           </div>
           <h4 class="confirm-title">Bạn có chắc chắn muốn xóa?</h4>
           <p class="confirm-message">
-            Nhà cung cấp "<strong>{{ supplierToDelete?.name }}</strong>" sẽ bị xóa vĩnh viễn.
+            Nhà cung cấp "<strong>{{ supplierToDelete?.name || 'Không xác định' }}</strong>" sẽ bị xóa vĩnh viễn.
             <br>Hành động này không thể hoàn tác.
           </p>
           
@@ -858,4 +837,10 @@ function sortBy(field) {
 <style scoped>
 /* Component-specific styles only */
 /* All common styles have been moved to assets/styles/common.css */
+
+/* Add this in your component's <style> section */
+.required-field::after {
+  content: " *";
+  color: red;
+}
 </style>

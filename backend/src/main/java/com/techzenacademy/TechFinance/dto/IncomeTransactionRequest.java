@@ -11,6 +11,7 @@ import java.time.LocalDate;
 
 @Data
 public class IncomeTransactionRequest {
+    @NotNull(message = "Category ID is required")
     private Integer categoryId;
     
     @JsonProperty(value = "customerId")
@@ -19,8 +20,11 @@ public class IncomeTransactionRequest {
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private boolean customerIdFieldIncluded;
     
+    @NotNull(message = "Transaction date is required")
     private LocalDate transactionDate;
     
+    @NotNull(message = "Amount is required")
+    @Positive(message = "Amount must be greater than zero")
     private BigDecimal amount;
     
     private PaymentStatus paymentStatus;

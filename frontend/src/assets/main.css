@@ -28,3 +28,22 @@ body, html {
   height: 100%;
   width: 100%;
 }
+
+/* Required field indicator */
+.required-field::after {
+  content: " *";
+  color: red;
+  font-weight: bold;
+}
+
+/* Required label - Better visibility with clearer styling */
+label.required::after {
+  content: " *";
+  color: #ef4444;
+  font-weight: bold;
+}
+
+/* Additional styling if needed */
+label.required-field {
+  display: inline-block;
+}

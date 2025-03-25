@@ -56,6 +56,10 @@ const filters = reactive({
 // Modal states
 const showModal = ref(false)
 const editMode = ref(false)
+
+// Define required fields
+const requiredFields = ['name'];
+
 const modalCategory = reactive({
   id: null,
   name: '',
@@ -530,7 +534,7 @@ const statusOptions = [
         <div class="modal-body">
           <form @submit.prevent="saveCategory">
             <div class="form-group">
-              <label class="form-label required">
+              <label class="form-label required required-field">
                 Tên danh mục
               </label>
               <input
@@ -657,4 +661,10 @@ const statusOptions = [
 <style scoped>
 /* Component-specific styles only */
 /* All common styles have been moved to assets/styles/common.css */
+
+/* Add this in your component's <style> section */
+.required-field::after {
+  content: " *";
+  color: red;
+}
 </style>

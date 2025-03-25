@@ -74,6 +74,9 @@ const modalErrors = reactive({
   referenceNo: ''
 });
 
+// Add a style block for required field indicators
+const requiredFields = ['categoryId', 'amount', 'transactionDate'];
+
 // States for Delete modal
 const showDeleteModal = ref(false);
 const transactionToDelete = ref(null);
@@ -565,6 +568,11 @@ function getCustomerTooltip(customer) {
   
   return tooltip;
 }
+
+// Add a computed property for safe access to selectedTransaction
+const safeSelectedTransaction = computed(() => {
+  return selectedTransaction.value || {};
+});
 </script>
 
 <template>
@@ -878,13 +886,13 @@ function getCustomerTooltip(customer) {
             </div>
           </div>
           
-          <div v-else-if="selectedTransaction" class="modal-body">
+          <div v-else-if="safeSelectedTransaction" class="modal-body">
             <div class="detail-header">
               <div class="transaction-avatar">
                 <i class="bi bi-cash-coin"></i>
               </div>
-              <h3 class="transaction-amount">{{ formatAmountDisplay(selectedTransaction.amount) }}</h3>
-              <p class="transaction-date">{{ formatDate(selectedTransaction.transactionDate) }}</p>
+              <h3 class="transaction-amount">{{ formatAmountDisplay(safeSelectedTransaction.amount || 0) }}</h3>
+              <p class="transaction-date">{{ formatDate(safeSelectedTransaction.transactionDate) }}</p>
             </div>
             
             <div class="detail-section">
@@ -895,7 +903,7 @@ function getCustomerTooltip(customer) {
                   <i class="bi bi-tag"></i>
                   Danh mục:
                 </div>
-                <div class="detail-value">{{ selectedTransaction.categoryName }}</div>
+                <div class="detail-value">{{ safeSelectedTransaction.categoryName }}</div>
               </div>
               
               <div class="detail-row">
@@ -903,7 +911,7 @@ function getCustomerTooltip(customer) {
                   <i class="bi bi-person"></i>
                   Khách hàng:
                 </div>
-                <div class="detail-value">{{ selectedTransaction.customerName || 'Không có' }}</div>
+                <div class="detail-value">{{ safeSelectedTransaction.customerName || 'Không có' }}</div>
               </div>
               
               <div class="detail-row">
@@ -912,9 +920,9 @@ function getCustomerTooltip(customer) {
                   Trạng thái:
                 </div>
                 <div class="detail-value">
-                  <span :class="['status-badge', selectedTransaction.paymentStatus === 'RECEIVED' ? 'active' : 'pending']">
-                    <i :class="[selectedTransaction.paymentStatus === 'RECEIVED' ? 'bi bi-check-circle' : 'bi bi-hourglass-split']"></i>
-                    {{ formatPaymentStatus(selectedTransaction.paymentStatus) }}
+                  <span :class="['status-badge', safeSelectedTransaction.paymentStatus === 'RECEIVED' ? 'active' : 'pending']">
+                    <i :class="[safeSelectedTransaction.paymentStatus === 'RECEIVED' ? 'bi bi-check-circle' : 'bi bi-hourglass-split']"></i>
+                    {{ formatPaymentStatus(safeSelectedTransaction.paymentStatus) }}
                   </span>
                 </div>
               </div>
@@ -924,7 +932,7 @@ function getCustomerTooltip(customer) {
                   <i class="bi bi-hash"></i>
                   Số tham chiếu:
                 </div>
-                <div class="detail-value">{{ selectedTransaction.referenceNo || 'Không có' }}</div>
+                <div class="detail-value">{{ safeSelectedTransaction.referenceNo || 'Không có' }}</div>
               </div>
               
               <div class="detail-row">
@@ -932,16 +940,16 @@ function getCustomerTooltip(customer) {
                   <i class="bi bi-card-text"></i>
                   Mô tả:
                 </div>
-                <div class="detail-value description-value">{{ selectedTransaction.description || 'Không có mô tả' }}</div>
+                <div class="detail-value description-value">{{ safeSelectedTransaction.description || 'Không có mô tả' }}</div>
               </div>
             </div>
             
-            <div v-if="isAdmin && selectedTransaction" class="modal-actions">
-              <button @click="openEditModal(selectedTransaction)" class="btn-primary">
+            <div v-if="isAdmin && safeSelectedTransaction" class="modal-actions">
+              <button @click="openEditModal(safeSelectedTransaction)" class="btn-primary">
                 <i class="bi bi-pencil-square"></i>
                 Sửa
               </button>
-              <button @click="openDeleteModal(selectedTransaction)" class="btn-danger">
+              <button @click="openDeleteModal(safeSelectedTransaction)" class="btn-danger">
                 <i class="bi bi-trash"></i>
                 Xóa
               </button>
@@ -964,7 +972,7 @@ function getCustomerTooltip(customer) {
         <div class="modal-body">
           <div class="form-grid">
             <div class="form-group">
-              <label class="form-label required">Danh mục</label>
+              <label class="form-label required-field">Danh mục</label>
               <select v-model="modalTransaction.categoryId" class="form-select" name="categoryId">
                 <option :value="null">Chọn danh mục</option>
                 <option v-for="category in categoriesList" :key="category.id" :value="category.id">
@@ -998,7 +1006,7 @@ function getCustomerTooltip(customer) {
             </div>
             
             <div class="form-group">
-              <label class="form-label required">Ngày giao dịch</label>
+              <label class="form-label required-field">Ngày giao dịch</label>
               <input
                 v-model="modalTransaction.transactionDate"
                 type="date"
@@ -1011,7 +1019,7 @@ function getCustomerTooltip(customer) {
             </div>
             
             <div class="form-group">
-              <label class="form-label required">Số tiền</label>
+              <label class="form-label required-field">Số tiền</label>
               <input
                 v-model="modalTransaction.amount"
                 type="text"
@@ -1376,7 +1384,7 @@ function getCustomerTooltip(customer) {
 /* For tablets and above */
 @media (min-width: 768px) {
   .content-layout.with-details {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
@@ -1408,4 +1416,10 @@ function getCustomerTooltip(customer) {
 }
 
 /* Các CSS khác giữ nguyên... */
+
+/* Add this in your component's <style> section */
+.required-field::after {
+  content: " *";
+  color: red;
+}
 </style>

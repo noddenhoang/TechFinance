@@ -22,6 +22,9 @@ public class Customer {
     
     private String phone;
     
+    @Column(length = 12, unique = true)
+    private String identification;
+    
     @Column(columnDefinition = "TEXT")
     private String address;
     

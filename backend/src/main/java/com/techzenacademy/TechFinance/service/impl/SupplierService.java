@@ -70,6 +70,19 @@ public class SupplierService {
     }
     
     public SupplierDTO createSupplier(SupplierRequest request) {
+        // Validate required fields
+        if (request.getEmail() == null || request.getEmail().trim().isEmpty()) {
+            throw new IllegalArgumentException("Email is required");
+        }
+        
+        if (request.getPhone() == null || request.getPhone().trim().isEmpty()) {
+            throw new IllegalArgumentException("Phone is required");
+        }
+        
+        if (request.getAddress() == null || request.getAddress().trim().isEmpty()) {
+            throw new IllegalArgumentException("Address is required");
+        }
+        
         if (request.getEmail() != null && supplierRepository.existsByEmail(request.getEmail())) {
             throw new IllegalArgumentException("A supplier with this email already exists");
         }
@@ -98,13 +111,47 @@ public class SupplierService {
             throw new IllegalArgumentException("A supplier with this email already exists");
         }
         
-        supplier.setName(request.getName());
-        supplier.setEmail(request.getEmail());
-        supplier.setPhone(request.getPhone());
-        supplier.setAddress(request.getAddress());
-        supplier.setTaxCode(request.getTaxCode());
-        supplier.setNotes(request.getNotes());
-        supplier.setIsActive(request.getIsActive());
+        // Update fields if provided
+        if (request.getName() != null) {
+            supplier.setName(request.getName());
+        }
+        
+        if (request.getEmail() != null) {
+            supplier.setEmail(request.getEmail());
+        }
+        
+        if (request.getPhone() != null) {
+            supplier.setPhone(request.getPhone());
+        }
+        
+        if (request.getAddress() != null) {
+            supplier.setAddress(request.getAddress());
+        }
+        
+        if (request.getTaxCode() != null) {
+            supplier.setTaxCode(request.getTaxCode());
+        }
+        
+        if (request.getNotes() != null) {
+            supplier.setNotes(request.getNotes());
+        }
+        
+        if (request.getIsActive() != null) {
+            supplier.setIsActive(request.getIsActive());
+        }
+        
+        // Validate required fields after updates
+        if (supplier.getEmail() == null || supplier.getEmail().trim().isEmpty()) {
+            throw new IllegalArgumentException("Email is required");
+        }
+        
+        if (supplier.getPhone() == null || supplier.getPhone().trim().isEmpty()) {
+            throw new IllegalArgumentException("Phone is required");
+        }
+        
+        if (supplier.getAddress() == null || supplier.getAddress().trim().isEmpty()) {
+            throw new IllegalArgumentException("Address is required");
+        }
         
         Supplier updatedSupplier = supplierRepository.save(supplier);
         return mapToDTO(updatedSupplier);

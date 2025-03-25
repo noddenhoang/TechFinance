@@ -11,11 +11,16 @@ public class SupplierRequest {
     @Size(max = 100, message = "Name must be less than 100 characters")
     private String name;
     
+    @NotBlank(message = "Email is required")
     @Email(message = "Invalid email format")
     private String email;
     
+    @NotBlank(message = "Phone is required")
     private String phone;
+    
+    @NotBlank(message = "Address is required")
     private String address;
+    
     private String taxCode;
     private String notes;
     private Boolean isActive = true;

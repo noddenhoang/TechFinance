@@ -2,5 +2,9 @@ package com.techzenacademy.TechFinance.entity;
 
 public enum UserRole {
     admin,
-    user
+    user;
+    
+    public String getName() {
+        return this.name();
+    }
 }

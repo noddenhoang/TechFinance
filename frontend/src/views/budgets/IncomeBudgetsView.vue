@@ -48,6 +48,9 @@ const budgetForm = ref({
   notes: ''
 });
 
+// Define required fields
+const requiredFields = ['categoryId', 'year', 'month', 'amount'];
+
 // Validation errors
 const errors = ref({});
 
@@ -524,7 +527,7 @@ onMounted(() => {
         </div>
         <div class="modal-body">
           <div class="form-group">
-            <label class="form-label required">Danh mục</label>
+            <label class="form-label required required-field">Danh mục</label>
             <select v-model="budgetForm.categoryId" class="form-select" :class="{ error: errors.categoryId }">
               <option value="">Chọn danh mục</option>
               <option v-for="category in categories" :key="category.id" :value="category.id">{{ category.name }}</option>
@@ -536,7 +539,7 @@ onMounted(() => {
           </div>
           
           <div class="form-group">
-            <label class="form-label required">Năm</label>
+            <label class="form-label required required-field">Năm</label>
             <select v-model="budgetForm.year" class="form-select" :class="{ error: errors.year }">
               <option value="">Chọn năm</option>
               <option v-for="year in years" :key="year" :value="year">{{ year }}</option>
@@ -548,7 +551,7 @@ onMounted(() => {
           </div>
           
           <div class="form-group">
-            <label class="form-label required">Tháng</label>
+            <label class="form-label required required-field">Tháng</label>
             <select v-model="budgetForm.month" class="form-select" :class="{ error: errors.month }">
               <option value="">Chọn tháng</option>
               <option v-for="month in months" :key="month.id" :value="month.id">{{ month.name }}</option>
@@ -560,7 +563,7 @@ onMounted(() => {
           </div>
           
           <div class="form-group">
-            <label class="form-label required">Số tiền</label>
+            <label class="form-label required required-field">Số tiền</label>
             <input 
               type="text" 
               v-model="budgetForm.amount" 
@@ -603,7 +606,7 @@ onMounted(() => {
         </div>
         <div class="modal-body">
           <div class="form-group">
-            <label class="form-label required">Danh mục</label>
+            <label class="form-label required required-field">Danh mục</label>
             <select v-model="budgetForm.categoryId" class="form-select" :class="{ error: errors.categoryId }">
               <option value="">Chọn danh mục</option>
               <option v-for="category in categories" :key="category.id" :value="category.id">{{ category.name }}</option>
@@ -615,7 +618,7 @@ onMounted(() => {
           </div>
           
           <div class="form-group">
-            <label class="form-label required">Năm</label>
+            <label class="form-label required required-field">Năm</label>
             <select v-model="budgetForm.year" class="form-select" :class="{ error: errors.year }">
               <option value="">Chọn năm</option>
               <option v-for="year in years" :key="year" :value="year">{{ year }}</option>
@@ -627,7 +630,7 @@ onMounted(() => {
           </div>
           
           <div class="form-group">
-            <label class="form-label required">Tháng</label>
+            <label class="form-label required required-field">Tháng</label>
             <select v-model="budgetForm.month" class="form-select" :class="{ error: errors.month }">
               <option value="">Chọn tháng</option>
               <option v-for="month in months" :key="month.id" :value="month.id">{{ month.name }}</option>
@@ -639,7 +642,7 @@ onMounted(() => {
           </div>
           
           <div class="form-group">
-            <label class="form-label required">Số tiền</label>
+            <label class="form-label required required-field">Số tiền</label>
             <input 
               type="text" 
               v-model="budgetForm.amount" 
@@ -784,6 +787,11 @@ onMounted(() => {
 .detail-value {
   font-size: 1rem;
   color: #111827;
+}
+
+.required-field::after {
+  content: " *";
+  color: red;
 }
 
 </style>
