@@ -281,10 +281,14 @@ const renderReceivableMonthlyChart = () => {
             beginAtZero: true,
             ticks: {
               callback: function(value) {
-                if (value >= 1000000) {
-                  return (value / 1000000).toFixed(0) + 'đ';
+                if (value >= 1000000000) {
+                  return (value / 1000000000).toFixed(1) + ' tỷ';
+                } else if (value >= 1000000) {
+                  return (value / 1000000).toFixed(1) + ' triệu';
+                } else if (value >= 1000) {
+                  return (value / 1000).toFixed(0) + 'K';
                 }
-                return value + 'đ';
+                return value;
               }
             }
           }
@@ -292,6 +296,13 @@ const renderReceivableMonthlyChart = () => {
         plugins: {
           legend: {
             display: false
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                return 'Phải thu: ' + formatCurrency(context.raw);
+              }
+            }
           }
         }
       }
@@ -352,10 +363,14 @@ const renderPayableMonthlyChart = () => {
             beginAtZero: true,
             ticks: {
               callback: function(value) {
-                if (value >= 1000000) {
-                  return (value / 1000000).toFixed(0) + 'đ';
+                if (value >= 1000000000) {
+                  return (value / 1000000000).toFixed(1) + ' tỷ';
+                } else if (value >= 1000000) {
+                  return (value / 1000000).toFixed(1) + ' triệu';
+                } else if (value >= 1000) {
+                  return (value / 1000).toFixed(0) + 'K';
                 }
-                return value + 'đ';
+                return value;
               }
             }
           }
@@ -363,6 +378,13 @@ const renderPayableMonthlyChart = () => {
         plugins: {
           legend: {
             display: false
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                return 'Phải trả: ' + formatCurrency(context.raw);
+              }
+            }
           }
         }
       }
@@ -461,7 +483,7 @@ onMounted(() => {
       </div>
 
       <div v-else-if="reportData.totalReceivable !== undefined" class="report-container">
-        <h2 class="report-section-title">8.1. Phải thu & phải trả</h2>
+        <h2 class="report-section-title">Phải thu & phải trả</h2>
         <p class="report-section-subtitle">Thông tin tổng hợp các khoản phải thu và phải trả năm {{ filters.year }}</p>
         
         <div class="row">
@@ -473,7 +495,7 @@ onMounted(() => {
               </div>
               <div class="card-body">
                 <div class="table-responsive">
-                  <table class="table table-bordered">
+                  <table class="table table-bordered financial-summary-table">
                     <thead class="table-light">
                       <tr>
                         <th scope="col">Khoản thanh toán đã nhận</th>
@@ -483,9 +505,23 @@ onMounted(() => {
                     </thead>
                     <tbody>
                       <tr>
-                        <td>{{ formatCurrency(reportData.totalReceived) }}</td>
-                        <td>{{ formatCurrency(reportData.totalPending) }}</td>
-                        <td>{{ formatCurrency(reportData.totalReceivable) }}</td>
+                        <td>
+                          <div class="amount-display">
+                            <span class="amount-value received-value">{{ formatCurrency(reportData.totalReceived) }}</span>
+                            <span class="amount-indicator positive-indicator"></span>
+                          </div>
+                        </td>
+                        <td>
+                          <div class="amount-display">
+                            <span class="amount-value pending-value">{{ formatCurrency(reportData.totalPending) }}</span>
+                            <span class="amount-indicator neutral-indicator"></span>
+                          </div>
+                        </td>
+                        <td>
+                          <div class="amount-display">
+                            <span class="amount-value total-value">{{ formatCurrency(reportData.totalReceivable) }}</span>
+                          </div>
+                        </td>
                       </tr>
                     </tbody>
                   </table>
@@ -493,7 +529,7 @@ onMounted(() => {
 
                 <div class="row">
                   <div class="col-md-12 text-center">
-                    <h6>% Thanh toán đã nhận</h6>
+                    <h6 class="chart-title">% Thanh toán đã nhận</h6>
                     <div class="chart-container" style="position: relative; height: 200px; width: 100%">
                       <canvas ref="receivableChart"></canvas>
                       <div class="chart-percent">{{ calculateReceivedPercentage() }}%</div>
@@ -519,7 +555,7 @@ onMounted(() => {
               </div>
               <div class="card-body">
                 <div class="table-responsive">
-                  <table class="table table-bordered">
+                  <table class="table table-bordered financial-summary-table">
                     <thead class="table-light">
                       <tr>
                         <th scope="col">Đã thanh toán</th>
@@ -529,9 +565,23 @@ onMounted(() => {
                     </thead>
                     <tbody>
                       <tr>
-                        <td>{{ formatCurrency(reportData.totalPaid) }}</td>
-                        <td>{{ formatCurrency(reportData.totalUnpaid) }}</td>
-                        <td>{{ formatCurrency(reportData.totalPayable) }}</td>
+                        <td>
+                          <div class="amount-display">
+                            <span class="amount-value received-value">{{ formatCurrency(reportData.totalPaid) }}</span>
+                            <span class="amount-indicator positive-indicator"></span>
+                          </div>
+                        </td>
+                        <td>
+                          <div class="amount-display">
+                            <span class="amount-value pending-value">{{ formatCurrency(reportData.totalUnpaid) }}</span>
+                            <span class="amount-indicator neutral-indicator"></span>
+                          </div>
+                        </td>
+                        <td>
+                          <div class="amount-display">
+                            <span class="amount-value total-value">{{ formatCurrency(reportData.totalPayable) }}</span>
+                          </div>
+                        </td>
                       </tr>
                     </tbody>
                   </table>
@@ -539,7 +589,7 @@ onMounted(() => {
 
                 <div class="row">
                   <div class="col-md-12 text-center">
-                    <h6>% Chi phí đã thanh toán</h6>
+                    <h6 class="chart-title">% Chi phí đã thanh toán</h6>
                     <div class="chart-container" style="position: relative; height: 200px; width: 100%">
                       <canvas ref="payableChart"></canvas>
                       <div class="chart-percent">{{ calculatePaidPercentage() }}%</div>
@@ -751,4 +801,71 @@ h6 {
 .btn-primary:hover {
   background-color: #2563eb;
 }
-</style> 
+
+/* Additional styles for improved table layout */
+.financial-summary-table {
+  margin-bottom: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.financial-summary-table th {
+  text-align: center;
+  font-weight: 600;
+  padding: 0.75rem;
+  background-color: #f8fafc;
+  color: #334155;
+}
+
+.financial-summary-table td {
+  padding: 1rem 0.75rem;
+  vertical-align: middle;
+  text-align: center;
+}
+
+.amount-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.amount-value {
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.received-value {
+  color: #047857;
+}
+
+.pending-value {
+  color: #b45309;
+}
+
+.total-value {
+  color: #1e40af;
+}
+
+.amount-indicator {
+  display: block;
+  height: 4px;
+  width: 40%;
+  border-radius: 2px;
+}
+
+.positive-indicator {
+  background-color: #10b981;
+}
+
+.neutral-indicator {
+  background-color: #f59e0b;
+}
+
+.chart-title {
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+  font-weight: 600;
+  color: #334155;
+}
+</style>
