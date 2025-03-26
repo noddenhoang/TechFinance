@@ -1,21 +1,23 @@
 package com.techzenacademy.TechFinance.service.impl;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
+
 import com.techzenacademy.TechFinance.dto.CustomerDTO;
 import com.techzenacademy.TechFinance.dto.CustomerRequest;
+import com.techzenacademy.TechFinance.dto.page.PageResponse;
 import com.techzenacademy.TechFinance.entity.Customer;
 import com.techzenacademy.TechFinance.entity.User;
 import com.techzenacademy.TechFinance.repository.CustomerRepository;
 import com.techzenacademy.TechFinance.repository.UserRepository;
-import jakarta.persistence.EntityNotFoundException;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Service;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import com.techzenacademy.TechFinance.dto.page.PageResponse;
 
-import java.util.List;
-import java.util.stream.Collectors;
+import jakarta.persistence.EntityNotFoundException;
 
 @Service
 public class CustomerService {
@@ -185,11 +187,14 @@ public class CustomerService {
      * @param email Filter by email containing this string (case-insensitive)
      * @param phone Filter by phone containing this string (case-insensitive)
      * @param address Filter by address containing this string (case-insensitive)
+     * @param identification Filter by identification containing this string (case-insensitive)
+     * @param taxCode Filter by tax code containing this string (case-insensitive)
      * @param isActive Filter by active status
      * @return List of filtered customers
      */
-    public List<CustomerDTO> filterCustomers(String name, String email, String phone, String address, Boolean isActive) {
-        return customerRepository.findWithFilters(name, email, phone, address, isActive)
+    public List<CustomerDTO> filterCustomers(String name, String email, String phone, String address, 
+                                           String identification, String taxCode, Boolean isActive) {
+        return customerRepository.findWithFilters(name, email, phone, address, identification, taxCode, isActive)
                 .stream()
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());
@@ -202,18 +207,27 @@ public class CustomerService {
      * @param email Filter by email containing this string (case-insensitive)
      * @param phone Filter by phone containing this string (case-insensitive)
      * @param address Filter by address containing this string (case-insensitive)
+     * @param identification Filter by identification containing this string (case-insensitive)
+     * @param taxCode Filter by tax code containing this string (case-insensitive)
      * @param isActive Filter by active status
-     * @param pageable Pagination information
-     * @return PageResponse of filtered customers
+     * @param pageable Pagination and sorting information
+     * @return PageResponse containing filtered customers
      */
     public PageResponse<CustomerDTO> getPagedCustomers(
-            String name, String email, String phone, String address, Boolean isActive, Pageable pageable) {
+            String name, 
+            String email, 
+            String phone, 
+            String address, 
+            String identification,
+            String taxCode,
+            Boolean isActive, 
+            Pageable pageable) {
         
-        Page<Customer> customerPage = customerRepository.findWithFiltersPageable(
-                name, email, phone, address, isActive, pageable);
+        Page<Customer> customersPage = customerRepository.findWithFiltersPageable(
+                name, email, phone, address, identification, taxCode, isActive, pageable);
         
-        // Map the contents using the existing mapToDTO method
-        Page<CustomerDTO> dtoPage = customerPage.map(this::mapToDTO);
+        // Map to CustomerDTO
+        Page<CustomerDTO> dtoPage = customersPage.map(this::mapToDTO);
         
         // Return the custom page response
         return new PageResponse<>(dtoPage);

@@ -127,7 +127,12 @@ const deleting = ref(false);
 
 // Filter state
 const filters = reactive({
-  name: ''
+  name: '',
+  email: '',
+  phone: '',
+  address: '',
+  identification: '',
+  taxCode: ''
 });
 
 // Pagination state
@@ -208,6 +213,11 @@ function goToPage(page) {
 // Reset filters
 function resetFilters() {
   filters.name = '';
+  filters.email = '';
+  filters.phone = '';
+  filters.address = '';
+  filters.identification = '';
+  filters.taxCode = '';
   pagination.currentPage = 0; // Reset to first page
   loadCustomers(0);
   closeDetails();
@@ -532,6 +542,71 @@ const safeSelectedCustomer = computed(() => {
                   type="text"
                   class="form-input has-icon"
                   placeholder="Nhập tên khách hàng để tìm kiếm"
+                />
+              </div>
+            </div>
+            
+            <div class="filter-item">
+              <label class="form-label">Email</label>
+              <div class="input-icon-wrapper">
+                <i class="bi bi-envelope input-icon-left"></i>
+                <input
+                  v-model="filters.email"
+                  type="text"
+                  class="form-input has-icon"
+                  placeholder="Nhập email để tìm kiếm"
+                />
+              </div>
+            </div>
+            
+            <div class="filter-item">
+              <label class="form-label">Số điện thoại</label>
+              <div class="input-icon-wrapper">
+                <i class="bi bi-telephone input-icon-left"></i>
+                <input
+                  v-model="filters.phone"
+                  type="text"
+                  class="form-input has-icon"
+                  placeholder="Nhập số điện thoại để tìm kiếm"
+                />
+              </div>
+            </div>
+            
+            <div class="filter-item">
+              <label class="form-label">Địa chỉ</label>
+              <div class="input-icon-wrapper">
+                <i class="bi bi-geo-alt input-icon-left"></i>
+                <input
+                  v-model="filters.address"
+                  type="text"
+                  class="form-input has-icon"
+                  placeholder="Nhập địa chỉ để tìm kiếm"
+                />
+              </div>
+            </div>
+            
+            <div class="filter-item">
+              <label class="form-label">CCCD/CMND</label>
+              <div class="input-icon-wrapper">
+                <i class="bi bi-person-vcard input-icon-left"></i>
+                <input
+                  v-model="filters.identification"
+                  type="text"
+                  class="form-input has-icon"
+                  placeholder="Nhập số CCCD/CMND để tìm kiếm"
+                />
+              </div>
+            </div>
+            
+            <div class="filter-item">
+              <label class="form-label">Mã số thuế</label>
+              <div class="input-icon-wrapper">
+                <i class="bi bi-receipt input-icon-left"></i>
+                <input
+                  v-model="filters.taxCode"
+                  type="text"
+                  class="form-input has-icon"
+                  placeholder="Nhập mã số thuế để tìm kiếm"
                 />
               </div>
             </div>

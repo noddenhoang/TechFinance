@@ -1,10 +1,5 @@
 package com.techzenacademy.TechFinance.controller;
 
-import com.techzenacademy.TechFinance.dto.CustomerDTO;
-import com.techzenacademy.TechFinance.dto.CustomerRequest;
-import com.techzenacademy.TechFinance.dto.page.PageResponse;
-import com.techzenacademy.TechFinance.service.impl.CustomerService;
-import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -12,9 +7,22 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
+import com.techzenacademy.TechFinance.dto.CustomerDTO;
+import com.techzenacademy.TechFinance.dto.CustomerRequest;
+import com.techzenacademy.TechFinance.dto.page.PageResponse;
+import com.techzenacademy.TechFinance.service.impl.CustomerService;
+
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/customers")
@@ -30,6 +38,8 @@ public class CustomerController {
             @RequestParam(name = "email", required = false) String email,
             @RequestParam(name = "phone", required = false) String phone,
             @RequestParam(name = "address", required = false) String address,
+            @RequestParam(name = "identification", required = false) String identification,
+            @RequestParam(name = "taxCode", required = false) String taxCode,
             @RequestParam(name = "isActive", required = false) Boolean isActive,
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "8") int size,
@@ -48,7 +58,7 @@ public class CustomerController {
         
         // Lấy dữ liệu đã phân trang
         PageResponse<CustomerDTO> pagedResponse = 
-                customerService.getPagedCustomers(name, email, phone, address, isActive, pageable);
+                customerService.getPagedCustomers(name, email, phone, address, identification, taxCode, isActive, pageable);
                 
         return ResponseEntity.ok(pagedResponse);
     }

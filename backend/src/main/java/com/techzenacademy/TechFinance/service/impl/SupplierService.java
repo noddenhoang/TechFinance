@@ -1,5 +1,14 @@
 package com.techzenacademy.TechFinance.service.impl;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
+
 import com.techzenacademy.TechFinance.dto.SupplierDTO;
 import com.techzenacademy.TechFinance.dto.SupplierRequest;
 import com.techzenacademy.TechFinance.dto.page.PageResponse;
@@ -7,15 +16,8 @@ import com.techzenacademy.TechFinance.entity.Supplier;
 import com.techzenacademy.TechFinance.entity.User;
 import com.techzenacademy.TechFinance.repository.SupplierRepository;
 import com.techzenacademy.TechFinance.repository.UserRepository;
-import jakarta.persistence.EntityNotFoundException;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.stream.Collectors;
+import jakarta.persistence.EntityNotFoundException;
 
 @Service
 public class SupplierService {
@@ -42,22 +44,25 @@ public class SupplierService {
      * Filter suppliers with pagination
      * 
      * @param name Filter by name containing this string (case-insensitive)
+     * @param email Filter by email containing this string (case-insensitive)
+     * @param phone Filter by phone containing this string (case-insensitive)
+     * @param address Filter by address containing this string (case-insensitive)
+     * @param taxCode Filter by tax code containing this string (case-insensitive)
      * @param isActive Filter by active status
      * @param pageable Pagination information
      * @return PageResponse containing filtered suppliers
      */
-    public PageResponse<SupplierDTO> getPagedSuppliers(String name, Boolean isActive, Pageable pageable) {
-        Page<Supplier> supplierPage;
+    public PageResponse<SupplierDTO> getPagedSuppliers(
+            String name, 
+            String email, 
+            String phone, 
+            String address, 
+            String taxCode,
+            Boolean isActive, 
+            Pageable pageable) {
         
-        if (name != null && isActive != null) {
-            supplierPage = supplierRepository.findByNameContainingIgnoreCaseAndIsActive(name, isActive, pageable);
-        } else if (name != null) {
-            supplierPage = supplierRepository.findByNameContainingIgnoreCase(name, pageable);
-        } else if (isActive != null) {
-            supplierPage = supplierRepository.findByIsActive(isActive, pageable);
-        } else {
-            supplierPage = supplierRepository.findAll(pageable);
-        }
+        Page<Supplier> supplierPage = supplierRepository.findWithFiltersPageable(
+                name, email, phone, address, taxCode, isActive, pageable);
         
         Page<SupplierDTO> dtoPage = supplierPage.map(this::mapToDTO);
         return new PageResponse<>(dtoPage);

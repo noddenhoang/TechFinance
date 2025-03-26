@@ -76,7 +76,11 @@ const deleting = ref(false);
 
 // Filter state
 const filters = reactive({
-  name: ''
+  name: '',
+  email: '',
+  phone: '',
+  address: '',
+  taxCode: ''
 });
 
 // Pagination state
@@ -157,6 +161,10 @@ function goToPage(page) {
 // Reset filters
 function resetFilters() {
   filters.name = '';
+  filters.email = '';
+  filters.phone = '';
+  filters.address = '';
+  filters.taxCode = '';
   pagination.currentPage = 0; // Reset to first page
   loadSuppliers(0);
   closeDetails();
@@ -235,10 +243,13 @@ function openEditModal(supplier) {
   modalSupplier.taxCode = supplier.taxCode || '';
   modalSupplier.notes = supplier.notes || '';
   modalSupplier.isActive = supplier.isActive;
+  
+  // Clear errors
   errors.name = '';
   errors.email = '';
   errors.phone = '';
   errors.address = '';
+  
   showModal.value = true;
   
   // Focus vào input sau khi modal hiển thị
@@ -515,6 +526,58 @@ const safeSelectedSupplier = computed(() => {
                   type="text"
                   class="form-input has-icon"
                   placeholder="Nhập tên nhà cung cấp để tìm kiếm"
+                />
+              </div>
+            </div>
+            
+            <div class="filter-item">
+              <label class="form-label">Email</label>
+              <div class="input-icon-wrapper">
+                <i class="bi bi-envelope input-icon-left"></i>
+                <input
+                  v-model="filters.email"
+                  type="text"
+                  class="form-input has-icon"
+                  placeholder="Nhập email để tìm kiếm"
+                />
+              </div>
+            </div>
+            
+            <div class="filter-item">
+              <label class="form-label">Số điện thoại</label>
+              <div class="input-icon-wrapper">
+                <i class="bi bi-telephone input-icon-left"></i>
+                <input
+                  v-model="filters.phone"
+                  type="text"
+                  class="form-input has-icon"
+                  placeholder="Nhập số điện thoại để tìm kiếm"
+                />
+              </div>
+            </div>
+            
+            <div class="filter-item">
+              <label class="form-label">Địa chỉ</label>
+              <div class="input-icon-wrapper">
+                <i class="bi bi-geo-alt input-icon-left"></i>
+                <input
+                  v-model="filters.address"
+                  type="text"
+                  class="form-input has-icon"
+                  placeholder="Nhập địa chỉ để tìm kiếm"
+                />
+              </div>
+            </div>
+            
+            <div class="filter-item">
+              <label class="form-label">Mã số thuế</label>
+              <div class="input-icon-wrapper">
+                <i class="bi bi-receipt input-icon-left"></i>
+                <input
+                  v-model="filters.taxCode"
+                  type="text"
+                  class="form-input has-icon"
+                  placeholder="Nhập mã số thuế để tìm kiếm"
                 />
               </div>
             </div>

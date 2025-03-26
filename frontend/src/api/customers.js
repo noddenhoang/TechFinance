@@ -13,6 +13,27 @@ export const customers = {
         params.append('name', filters.name);
       }
       
+      // Add additional filter parameters
+      if (filters.email) {
+        params.append('email', filters.email);
+      }
+      
+      if (filters.phone) {
+        params.append('phone', filters.phone);
+      }
+      
+      if (filters.address) {
+        params.append('address', filters.address);
+      }
+      
+      if (filters.identification) {
+        params.append('identification', filters.identification);
+      }
+      
+      if (filters.taxCode) {
+        params.append('taxCode', filters.taxCode);
+      }
+      
       // Thêm filter isActive nếu được cung cấp
       if (filters.isActive !== undefined && filters.isActive !== null) {
         params.append('isActive', filters.isActive);
