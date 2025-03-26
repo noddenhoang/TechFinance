@@ -578,6 +578,9 @@ const safeSelectedCustomer = computed(() => {
               <thead>
                 <tr>
                   <th class="name-column">Tên khách hàng</th>
+                  <th class="contact-column">Email</th>
+                  <th class="contact-column">Số điện thoại</th>
+                  <th class="address-column">Địa chỉ</th>
                   <th v-if="isAdmin" class="action-column text-center">Hành động</th>
                 </tr>
               </thead>
@@ -593,6 +596,9 @@ const safeSelectedCustomer = computed(() => {
                     <i class="bi bi-person customer-icon"></i>
                     {{ customer.name }}
                   </td>
+                  <td class="contact-column">{{ customer.email || 'Chưa cung cấp' }}</td>
+                  <td class="contact-column">{{ customer.phone || 'Chưa cung cấp' }}</td>
+                  <td class="address-column">{{ customer.address || 'Chưa cung cấp' }}</td>
                   <td v-if="isAdmin" class="action-column text-center">
                     <div class="action-buttons">
                       <button @click.stop="openEditModal(customer)" class="btn-icon edit-btn" title="Chỉnh sửa">
@@ -922,5 +928,33 @@ const safeSelectedCustomer = computed(() => {
 .required-field::after {
   content: " *";
   color: red;
+}
+
+/* Styles for the contact information columns */
+.contact-column {
+  min-width: 150px;
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.address-column {
+  min-width: 150px;
+  max-width: 250px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Make table responsive */
+.table-responsive {
+  overflow-x: auto;
+}
+
+@media (max-width: 768px) {
+  .contact-column, .address-column {
+    display: none;
+  }
 }
 </style>

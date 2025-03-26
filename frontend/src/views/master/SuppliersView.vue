@@ -566,6 +566,10 @@ const safeSelectedSupplier = computed(() => {
               <thead>
                 <tr>
                   <th class="name-column">Tên nhà cung cấp</th>
+                  <th class="contact-column">Email</th>
+                  <th class="contact-column">Số điện thoại</th>
+                  <th class="tax-column">Mã số thuế</th>
+                  <th class="address-column">Địa chỉ</th>
                   <th v-if="isAdmin" class="action-column text-center">Hành động</th>
                 </tr>
               </thead>
@@ -581,6 +585,10 @@ const safeSelectedSupplier = computed(() => {
                     <i class="bi bi-building supplier-icon"></i>
                     {{ supplier.name }}
                   </td>
+                  <td class="contact-column">{{ supplier.email || 'Chưa cung cấp' }}</td>
+                  <td class="contact-column">{{ supplier.phone || 'Chưa cung cấp' }}</td>
+                  <td class="tax-column">{{ supplier.taxCode || 'Chưa cung cấp' }}</td>
+                  <td class="address-column">{{ supplier.address || 'Chưa cung cấp' }}</td>
                   <td v-if="isAdmin" class="action-column text-center">
                     <div class="action-buttons">
                       <button @click.stop="openEditModal(supplier)" class="btn-icon edit-btn" title="Chỉnh sửa">
@@ -872,5 +880,41 @@ const safeSelectedSupplier = computed(() => {
 .required-field::after {
   content: " *";
   color: red;
+}
+
+/* Styles for the contact information columns */
+.contact-column {
+  min-width: 150px;
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tax-column {
+  min-width: 120px;
+  max-width: 150px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.address-column {
+  min-width: 150px;
+  max-width: 250px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Make table responsive */
+.table-responsive {
+  overflow-x: auto;
+}
+
+@media (max-width: 768px) {
+  .contact-column, .address-column, .tax-column {
+    display: none;
+  }
 }
 </style>
