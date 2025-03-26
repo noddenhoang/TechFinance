@@ -227,7 +227,7 @@ onMounted(() => {
       <div class="report-container" v-if="!isLoading && !error && reportData">
         <!-- Tiêu đề báo cáo -->
         <h2 class="report-section-title">
-          {{ filters.reportType === 'customer' ? '8.6. Thu nhập theo Khách hàng' : '8.7. Chi phí theo Nhà cung cấp' }}
+          {{ filters.reportType === 'customer' ? 'Thu nhập theo Khách hàng' : '8.7. Chi phí theo Nhà cung cấp' }}
         </h2>
         <p class="report-section-subtitle">Thông tin được sắp xếp theo tổng {{ filters.reportType === 'customer' ? 'thu nhập' : 'chi phí' }} năm {{ filters.year }}</p>
         

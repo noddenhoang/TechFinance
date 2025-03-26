@@ -369,8 +369,12 @@ async function saveSupplier() {
       // Đóng modal trước khi load lại dữ liệu
       closeModal();
       
-      // Tải lại từ trang hiện tại thay vì về trang đầu tiên
-      await loadSuppliers(pagination.currentPage);
+      // Cập nhật sorting để hiển thị item mới nhất lên đầu
+      sorting.field = 'id';
+      sorting.direction = 'desc';
+      
+      // Reset về trang đầu tiên để thấy item mới nhất
+      await loadSuppliers(0);
     }
   } catch (error) {
     console.error('Lỗi khi lưu nhà cung cấp:', error);

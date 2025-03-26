@@ -381,13 +381,22 @@ async function saveCustomer() {
     } else {
       const newCustomer = await customers.create(requestData);
       showNotification('Tạo khách hàng mới thành công');
+      
+      // Cập nhật sorting để hiển thị item mới nhất lên đầu
+      sorting.field = 'id';
+      sorting.direction = 'desc';
     }
     
     // Đóng modal trước khi load lại dữ liệu
     closeModal();
     
-    // Tải lại từ trang hiện tại
-    await loadCustomers(pagination.currentPage);
+    // Nếu vừa tạo mới khách hàng, load lại từ trang đầu tiên
+    if (!editMode.value) {
+      await loadCustomers(0);
+    } else {
+      // Nếu chỉ sửa thì load lại trang hiện tại
+      await loadCustomers(pagination.currentPage);
+    }
   } catch (error) {
     console.error('Lỗi khi lưu khách hàng:', error);
     

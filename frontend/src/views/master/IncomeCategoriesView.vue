@@ -224,6 +224,8 @@ async function saveCategory() {
         isActive: modalCategory.isActive
       });
       showNotification('Cập nhật danh mục thành công');
+      closeModal();
+      await loadCategories(pagination.currentPage);
     } else {
       await incomeCategories.create({
         name: modalCategory.name.trim(),
@@ -231,9 +233,15 @@ async function saveCategory() {
         isActive: modalCategory.isActive
       });
       showNotification('Tạo danh mục mới thành công');
+      closeModal();
+      
+      // Cập nhật sorting để hiển thị item mới nhất lên đầu
+      sorting.field = 'id';
+      sorting.direction = 'desc';
+      
+      // Load lại từ trang đầu tiên để xem item vừa tạo
+      await loadCategories(0);
     }
-    closeModal();
-    await loadCategories(pagination.currentPage);
   } catch (err) {
     if (err.response?.data?.message?.includes('already exists')) {
       modalErrors.name = 'Danh mục với tên này đã tồn tại';
