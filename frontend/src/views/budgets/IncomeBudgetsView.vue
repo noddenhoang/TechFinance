@@ -242,6 +242,12 @@ const validateForm = () => {
   }
   
   errors.value = newErrors;
+  
+  // If there are errors, show notification
+  if (Object.keys(newErrors).length > 0) {
+    showNotification('Vui lòng điền đầy đủ thông tin bắt buộc', 'error');
+  }
+  
   return Object.keys(newErrors).length === 0;
 };
 
@@ -272,7 +278,14 @@ const saveBudget = async () => {
     loadData();
   } catch (error) {
     console.error('Error saving budget:', error);
-    showNotification('Không thể lưu ngân sách. Vui lòng thử lại sau.', 'error');
+    
+    // Handle unique constraint error
+    if (error.response?.data?.message?.includes('budget_period')) {
+      errors.value.categoryId = 'Đã tồn tại ngân sách cho danh mục này trong kỳ đã chọn';
+      showNotification('Đã tồn tại ngân sách cho danh mục này trong tháng/năm đã chọn', 'error');
+    } else {
+      showNotification('Không thể lưu ngân sách. Vui lòng thử lại sau.', 'error');
+    }
   }
 };
 

@@ -212,13 +212,13 @@ function openAddModal() {
   modalSupplier.taxCode = '';
   modalSupplier.notes = '';
   modalSupplier.isActive = true;
-  errors.name = '';
-  errors.email = '';
-  errors.phone = '';
-  errors.address = '';
+  
+  // Clear errors
+  Object.keys(errors).forEach(key => errors[key] = '');
+  
   showModal.value = true;
   
-  // Focus vào input sau khi modal hiển thị
+  // Focus first input
   nextTick(() => {
     document.querySelector('input[name="supplierName"]')?.focus();
   });
@@ -266,63 +266,90 @@ function closeDeleteModal() {
 
 // Validate phone number
 function validatePhone() {
-  // Loại bỏ tất cả ký tự không phải số
-  modalSupplier.phone = modalSupplier.phone.replace(/\D/g, '');
+  // Only allow numeric input - replace any non-numeric characters
+  modalSupplier.phone = modalSupplier.phone.replace(/[^0-9]/g, '');
   
-  // Giới hạn ở 10 số
+  // Limit to 10 digits by only keeping the first 10 digits
   if (modalSupplier.phone.length > 10) {
-    modalSupplier.phone = modalSupplier.phone.slice(0, 10);
+    modalSupplier.phone = modalSupplier.phone.substring(0, 10);
   }
   
-  // Hiển thị lỗi nếu đã nhập nhưng không đủ 10 số
-  if (modalSupplier.phone && modalSupplier.phone.length < 10) {
+  // Show error if already entered but not complete
+  if (modalSupplier.phone && modalSupplier.phone.length !== 10) {
     errors.phone = 'Số điện thoại phải có đúng 10 chữ số';
   } else {
     errors.phone = '';
   }
 }
 
-// Save supplier (create or update)
-async function saveSupplier() {
-  // Reset errors
-  errors.name = '';
-  errors.email = '';
-  errors.phone = '';
-  errors.address = '';
-  
-  // Validate
+// Validate email format
+function validateEmail() {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (modalSupplier.email && !emailRegex.test(modalSupplier.email)) {
+    errors.email = 'Email không hợp lệ';
+  } else {
+    errors.email = '';
+  }
+}
+
+// Validate form fields
+function validateSupplierForm() {
   let isValid = true;
   
-  if (!modalSupplier.name.trim()) {
+  // Clear previous errors
+  Object.keys(errors).forEach(key => errors[key] = '');
+  
+  // Check required fields
+  if (!modalSupplier.name || !modalSupplier.name.trim()) {
     errors.name = 'Tên nhà cung cấp không được để trống';
     isValid = false;
   }
   
-  if (modalSupplier.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(modalSupplier.email)) {
+  if (!modalSupplier.email || !modalSupplier.email.trim()) {
+    errors.email = 'Email không được để trống';
+    isValid = false;
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(modalSupplier.email)) {
     errors.email = 'Email không hợp lệ';
     isValid = false;
   }
   
-  // Kiểm tra nếu số điện thoại đã nhập thì phải đúng 10 số
-  if (modalSupplier.phone && modalSupplier.phone.length !== 10) {
+  if (!modalSupplier.phone || !modalSupplier.phone.trim()) {
+    errors.phone = 'Số điện thoại không được để trống';
+    isValid = false;
+  } else if (modalSupplier.phone.length !== 10) {
     errors.phone = 'Số điện thoại phải có đúng 10 chữ số';
     isValid = false;
   }
   
-  if (!isValid) return;
+  if (!modalSupplier.address || !modalSupplier.address.trim()) {
+    errors.address = 'Địa chỉ không được để trống';
+    isValid = false;
+  }
+  
+  return isValid;
+}
+
+// Save supplier (create or update)
+async function saveSupplier() {
+  if (!validateSupplierForm()) {
+    showNotification('Vui lòng điền đầy đủ thông tin bắt buộc', 'error');
+    return;
+  }
   
   saving.value = true;
   try {
+    const requestData = {
+      name: modalSupplier.name.trim(),
+      email: modalSupplier.email.trim(),
+      phone: modalSupplier.phone.trim(),
+      address: modalSupplier.address.trim(),
+      taxCode: modalSupplier.taxCode ? modalSupplier.taxCode.trim() : null,
+      notes: modalSupplier.notes ? modalSupplier.notes.trim() : null,
+      isActive: modalSupplier.isActive
+    };
+    
     if (editMode.value) {
-      await suppliers.update(modalSupplier.id, {
-        name: modalSupplier.name,
-        email: modalSupplier.email,
-        phone: modalSupplier.phone,
-        address: modalSupplier.address,
-        taxCode: modalSupplier.taxCode,
-        notes: modalSupplier.notes,
-        isActive: modalSupplier.isActive
-      });
+      await suppliers.update(modalSupplier.id, requestData);
       showNotification('Cập nhật nhà cung cấp thành công');
       
       // Nếu đang xem chi tiết nhà cung cấp này thì cập nhật lại thông tin chi tiết
@@ -336,15 +363,7 @@ async function saveSupplier() {
       // Tải lại trang hiện tại
       await loadSuppliers(pagination.currentPage);
     } else {
-      const newSupplier = await suppliers.create({
-        name: modalSupplier.name,
-        email: modalSupplier.email,
-        phone: modalSupplier.phone,
-        address: modalSupplier.address,
-        taxCode: modalSupplier.taxCode,
-        notes: modalSupplier.notes,
-        isActive: modalSupplier.isActive
-      });
+      const newSupplier = await suppliers.create(requestData);
       showNotification('Tạo nhà cung cấp mới thành công');
       
       // Đóng modal trước khi load lại dữ liệu
@@ -736,13 +755,23 @@ const safeSelectedSupplier = computed(() => {
           
           <div class="form-group">
             <label class="form-label required">Email</label>
-            <input v-model="modalSupplier.email" type="email" class="form-input" :class="{'error': errors.email}" placeholder="Nhập địa chỉ email">
+            <input v-model="modalSupplier.email" type="email" class="form-input" :class="{'error': errors.email}" placeholder="Nhập địa chỉ email" @input="validateEmail">
             <div v-if="errors.email" class="form-error">{{ errors.email }}</div>
           </div>
           
           <div class="form-group">
             <label class="form-label required">Số điện thoại</label>
-            <input v-model="modalSupplier.phone" type="tel" class="form-input" :class="{'error': errors.phone}" placeholder="Nhập số điện thoại" @input="validatePhone">
+            <input 
+              v-model="modalSupplier.phone" 
+              type="text" 
+              class="form-input" 
+              :class="{'error': errors.phone}" 
+              placeholder="Nhập số điện thoại (10 chữ số)" 
+              @input="validatePhone"
+              maxlength="10"
+              inputmode="numeric"
+              pattern="[0-9]*"
+            >
             <div v-if="errors.phone" class="form-error">{{ errors.phone }}</div>
           </div>
           
@@ -769,18 +798,18 @@ const safeSelectedSupplier = computed(() => {
               <option :value="false">Không hoạt động</option>
             </select>
           </div>
-          
-          <div class="modal-actions">
-            <button @click="closeModal" class="btn-outline">
-              <i class="bi bi-x-lg"></i>
-              Hủy
-            </button>
-            <button @click="saveSupplier" class="btn-primary" :disabled="saving">
-              <i v-if="saving" class="bi bi-arrow-repeat spinner"></i>
-              <i v-else class="bi bi-save"></i>
-              {{ saving ? 'Đang lưu...' : 'Lưu' }}
-            </button>
-          </div>
+        </div>
+        
+        <div class="modal-actions">
+          <button @click="closeModal" class="btn-outline">
+            <i class="bi bi-x-lg"></i>
+            Hủy
+          </button>
+          <button @click="saveSupplier" class="btn-primary" :disabled="saving">
+            <i v-if="saving" class="bi bi-arrow-repeat spinner"></i>
+            <i v-else class="bi bi-save"></i>
+            {{ saving ? 'Đang lưu...' : 'Lưu' }}
+          </button>
         </div>
       </div>
     </div>
@@ -831,6 +860,7 @@ const safeSelectedSupplier = computed(() => {
       <i :class="notification.type === 'success' ? 'bi bi-check-circle' : 'bi bi-exclamation-circle'"></i>
       <span>{{ notification.message }}</span>
     </div>
+    
   </AppLayout>
 </template>
 

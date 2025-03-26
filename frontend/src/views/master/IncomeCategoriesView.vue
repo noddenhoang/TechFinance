@@ -207,41 +207,42 @@ function closeModal() {
 
 async function saveCategory() {
   // Reset errors
-  modalErrors.name = ''
+  modalErrors.name = '';
   
   // Validate
   if (!modalCategory.name.trim()) {
-    modalErrors.name = 'Tên danh mục không được để trống'
-    return
+    modalErrors.name = 'Tên danh mục không được để trống';
+    return;
   }
   
-  saving.value = true
+  saving.value = true;
   try {
     if (editMode.value) {
       await incomeCategories.update(modalCategory.id, {
-        name: modalCategory.name,
+        name: modalCategory.name.trim(),
         description: modalCategory.description,
         isActive: modalCategory.isActive
-      })
-      showNotification('Cập nhật danh mục thành công')
+      });
+      showNotification('Cập nhật danh mục thành công');
     } else {
       await incomeCategories.create({
-        name: modalCategory.name,
+        name: modalCategory.name.trim(),
         description: modalCategory.description,
         isActive: modalCategory.isActive
-      })
-      showNotification('Tạo danh mục mới thành công')
+      });
+      showNotification('Tạo danh mục mới thành công');
     }
-    closeModal()
-    await loadCategories(pagination.currentPage)
+    closeModal();
+    await loadCategories(pagination.currentPage);
   } catch (err) {
     if (err.response?.data?.message?.includes('already exists')) {
-      modalErrors.name = 'Danh mục với tên này đã tồn tại'
+      modalErrors.name = 'Danh mục với tên này đã tồn tại';
+      showNotification('Danh mục với tên này đã tồn tại trong hệ thống', 'error');
     } else {
-      showNotification(err.response?.data?.message || 'Đã xảy ra lỗi khi lưu danh mục', 'error')
+      showNotification(err.response?.data?.message || 'Đã xảy ra lỗi khi lưu danh mục', 'error');
     }
   } finally {
-    saving.value = false
+    saving.value = false;
   }
 }
 

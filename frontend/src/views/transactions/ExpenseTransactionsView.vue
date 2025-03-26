@@ -365,28 +365,47 @@ function validateAmount() {
   }
 }
 
+// Validate all form fields
+function validateForm() {
+  let isValid = true;
+  
+  // Reset all errors first
+  Object.keys(modalErrors).forEach(key => modalErrors[key] = '');
+  
+  // Check required fields
+  if (!modalTransaction.categoryId) {
+    modalErrors.categoryId = 'Vui lòng chọn danh mục';
+    isValid = false;
+  }
+  
+  if (!modalTransaction.transactionDate) {
+    modalErrors.transactionDate = 'Vui lòng chọn ngày giao dịch';
+    isValid = false;
+  }
+  
+  if (!modalTransaction.amount) {
+    modalErrors.amount = 'Vui lòng nhập số tiền';
+    isValid = false;
+  } else if (parseFloat(modalTransaction.amount) <= 0) {
+    modalErrors.amount = 'Số tiền phải lớn hơn 0';
+    isValid = false;
+  }
+  
+  if (!modalTransaction.paymentStatus) {
+    modalErrors.paymentStatus = 'Vui lòng chọn trạng thái thanh toán';
+    isValid = false;
+  }
+  
+  return isValid;
+}
+
 // Save transaction (create or update)
 async function saveTransaction() {
   // Reset errors
   Object.keys(modalErrors).forEach(key => modalErrors[key] = '');
   
   // Validate
-  let isValid = true;
-  
-  if (!modalTransaction.categoryId) {
-    modalErrors.categoryId = 'Danh mục không được để trống';
-    isValid = false;
-  }
-  
-  if (!modalTransaction.transactionDate) {
-    modalErrors.transactionDate = 'Ngày giao dịch không được để trống';
-    isValid = false;
-  }
-  
-  if (!modalTransaction.amount || parseFloat(modalTransaction.amount) <= 0) {
-    modalErrors.amount = 'Số tiền phải lớn hơn 0';
-    isValid = false;
-  }
+  let isValid = validateForm();
   
   if (!isValid) return;
   
@@ -1009,7 +1028,7 @@ const safeSelectedTransaction = computed(() => {
         <div class="modal-body">
           <div class="form-grid">
             <div class="form-group">
-              <label class="form-label required">Danh mục</label>
+              <label class="form-label required-field">Danh mục</label>
               <select 
                 v-model="modalTransaction.categoryId" 
                 :class="['form-select', modalErrors.categoryId ? 'error' : '']"
@@ -1037,7 +1056,7 @@ const safeSelectedTransaction = computed(() => {
             </div>
             
             <div class="form-group">
-              <label class="form-label required">Ngày giao dịch</label>
+              <label class="form-label required-field">Ngày giao dịch</label>
               <input 
                 v-model="modalTransaction.transactionDate" 
                 type="date" 
@@ -1050,7 +1069,7 @@ const safeSelectedTransaction = computed(() => {
             </div>
             
             <div class="form-group">
-              <label class="form-label required">Số tiền</label>
+              <label class="form-label required-field">Số tiền</label>
               <input 
                 v-model="modalTransaction.amount" 
                 type="text" 

@@ -345,32 +345,52 @@ function validateAmount() {
   }
 }
 
-// Save transaction (create or update)
-async function saveTransaction() {
-  // Reset errors
-  Object.keys(modalErrors).forEach(key => modalErrors[key] = '');
-  
-  // Validate
+// Validate all form fields
+function validateForm() {
   let isValid = true;
   
+  // Reset all errors first
+  Object.keys(modalErrors).forEach(key => modalErrors[key] = '');
+  
+  // Check required fields
   if (!modalTransaction.categoryId) {
-    modalErrors.categoryId = 'Danh mục không được để trống';
+    modalErrors.categoryId = 'Vui lòng chọn danh mục';
     isValid = false;
   }
   
   if (!modalTransaction.transactionDate) {
-    modalErrors.transactionDate = 'Ngày giao dịch không được để trống';
+    modalErrors.transactionDate = 'Vui lòng chọn ngày giao dịch';
     isValid = false;
   }
   
-  if (!modalTransaction.amount || parseFloat(modalTransaction.amount) <= 0) {
+  if (!modalTransaction.amount) {
+    modalErrors.amount = 'Vui lòng nhập số tiền';
+    isValid = false;
+  } else if (parseFloat(modalTransaction.amount) <= 0) {
     modalErrors.amount = 'Số tiền phải lớn hơn 0';
     isValid = false;
   }
   
-  if (!isValid) return;
+  if (!modalTransaction.paymentStatus) {
+    modalErrors.paymentStatus = 'Vui lòng chọn trạng thái thanh toán';
+    isValid = false;
+  }
   
+  return isValid;
+}
+
+// Save transaction (create or update)
+async function saveTransaction() {
+  // Validate form first
+  if (!validateForm()) {
+    // Show notification for validation error
+    showNotification('Vui lòng điền đầy đủ thông tin bắt buộc', 'error');
+    return;
+  }
+  
+  // Proceed with saving
   saving.value = true;
+  
   try {
     const requestData = {
       categoryId: parseInt(modalTransaction.categoryId),
@@ -412,6 +432,15 @@ async function saveTransaction() {
     } else {
       showNotification('Có lỗi xảy ra, vui lòng thử lại sau', 'error');
     }
+    
+    // Handle specific errors for duplicate entries
+    if (error.response?.data?.message?.includes('reference_no already exists')) {
+      modalErrors.referenceNo = 'Mã tham chiếu này đã tồn tại';
+      showNotification('Mã tham chiếu này đã tồn tại trong hệ thống', 'error');
+    } else {
+      showNotification('Không thể lưu giao dịch: ' + (error.response?.data?.message || error.message), 'error');
+    }
+    console.error('Error saving transaction:', error);
   } finally {
     saving.value = false;
   }
@@ -903,7 +932,7 @@ const safeSelectedTransaction = computed(() => {
                   <i class="bi bi-tag"></i>
                   Danh mục:
                 </div>
-                <div class="detail-value">{{ safeSelectedTransaction.categoryName }}</div>
+                <div class="detail-value">{{ getCategoryName(safeSelectedTransaction.categoryId) }}</div>
               </div>
               
               <div class="detail-row">
@@ -911,7 +940,7 @@ const safeSelectedTransaction = computed(() => {
                   <i class="bi bi-person"></i>
                   Khách hàng:
                 </div>
-                <div class="detail-value">{{ safeSelectedTransaction.customerName || 'Không có' }}</div>
+                <div class="detail-value">{{ getCustomerName(safeSelectedTransaction.customerId) }}</div>
               </div>
               
               <div class="detail-row">

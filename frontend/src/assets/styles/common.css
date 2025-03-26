@@ -151,9 +151,11 @@
   margin-bottom: 0.5rem;
 }
 
+/* More prominent required field indicator */
 .form-label.required::after {
   content: " *";
   color: #ef4444;
+  font-weight: bold;
   margin-left: 0.25rem;
 }
 
@@ -183,13 +185,17 @@
   padding-left: 2.5rem;
 }
 
+/* Enhanced error styles */
 .form-input.error, 
-.form-select.error {
+.form-select.error,
+.form-textarea.error {
   border-color: #ef4444;
+  background-color: #fff5f5;
 }
 
 .form-input.error:focus, 
-.form-select.error:focus {
+.form-select.error:focus,
+.form-textarea.error:focus {
   box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
 }
 
@@ -200,6 +206,7 @@
   color: #ef4444;
   font-size: 0.75rem;
   margin-top: 0.5rem;
+  font-weight: 500;
 }
 
 .input-icon-wrapper {

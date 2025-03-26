@@ -75,7 +75,7 @@ const modalErrors = reactive({
 // Thêm hàm validate số điện thoại
 function validatePhone() {
   // Loại bỏ tất cả ký tự không phải số
-  modalCustomer.phone = modalCustomer.phone.replace(/\D/g, '');
+  modalCustomer.phone = modalCustomer.phone.replace(/[^0-9]/g, '');
   
   // Giới hạn ở 10 số
   if (modalCustomer.phone.length > 10) {
@@ -83,10 +83,40 @@ function validatePhone() {
   }
   
   // Hiển thị lỗi nếu đã nhập nhưng không đủ 10 số
-  if (modalCustomer.phone && modalCustomer.phone.length < 10) {
+  if (modalCustomer.phone && modalCustomer.phone.length !== 10) {
     modalErrors.phone = 'Số điện thoại phải có đúng 10 chữ số';
   } else {
     modalErrors.phone = '';
+  }
+}
+
+// Validate email format
+function validateEmail() {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (modalCustomer.email && !emailRegex.test(modalCustomer.email)) {
+    modalErrors.email = 'Email không hợp lệ';
+  } else {
+    modalErrors.email = '';
+  }
+}
+
+// Validate identification
+function validateIdentification() {
+  // Only allow numeric input - replace any non-numeric characters
+  if (modalCustomer.identification) {
+    modalCustomer.identification = modalCustomer.identification.replace(/[^0-9]/g, '');
+    
+    // Limit to 12 digits by only keeping the first 12 digits
+    if (modalCustomer.identification.length > 12) {
+      modalCustomer.identification = modalCustomer.identification.substring(0, 12);
+    }
+    
+    // Show error if already entered but not complete
+    if (modalCustomer.identification && modalCustomer.identification.length !== 12) {
+      modalErrors.identification = 'CCCD/CMND phải có đúng 12 chữ số';
+    } else {
+      modalErrors.identification = '';
+    }
   }
 }
 
@@ -315,7 +345,16 @@ async function saveCustomer() {
     isValid = false;
   }
   
-  if (!isValid) return;
+  // Only validate identification if provided
+  if (modalCustomer.identification && modalCustomer.identification.length !== 12) {
+    modalErrors.identification = 'CCCD/CMND phải có đúng 12 chữ số';
+    isValid = false;
+  }
+  
+  if (!isValid) {
+    showNotification('Vui lòng điền đầy đủ thông tin bắt buộc', 'error');
+    return;
+  }
   
   saving.value = true;
   try {
@@ -359,8 +398,13 @@ async function saveCustomer() {
       if (status === 400) {
         if (message.includes('email already exists')) {
           modalErrors.email = 'Email đã tồn tại';
+          showNotification('Email đã được sử dụng bởi khách hàng khác', 'error');
+        } else if (message.includes('phone already exists')) {
+          modalErrors.phone = 'Số điện thoại đã tồn tại';
+          showNotification('Số điện thoại đã được sử dụng bởi khách hàng khác', 'error');
         } else if (message.includes('identification already exists')) {
           modalErrors.identification = 'CCCD/CMND đã tồn tại';
+          showNotification('CCCD/CMND đã được sử dụng bởi khách hàng khác', 'error');
         } else {
           showNotification(message || 'Dữ liệu không hợp lệ', 'error');
         }
@@ -393,9 +437,11 @@ function closeDeleteModal() {
 async function deleteCustomer() {
   if (!customerToDelete.value) return;
   
+  const deletedCustomerId = customerToDelete.value.id; // Store ID before closing modal
+  
   deleting.value = true;
   try {
-    await customers.delete(customerToDelete.value.id);
+    await customers.delete(deletedCustomerId);
 
     // Đóng modal xóa
     closeDeleteModal();
@@ -404,7 +450,7 @@ async function deleteCustomer() {
   
     
     // Nếu đang xem chi tiết khách hàng này thì đóng chi tiết
-    if (selectedCustomer.value && selectedCustomer.value.id === customerToDelete.value.id) {
+    if (selectedCustomer.value && selectedCustomer.value.id === deletedCustomerId) {
       closeDetails();
     }
     
@@ -698,7 +744,7 @@ const safeSelectedCustomer = computed(() => {
               <div class="detail-row">
                 <div class="detail-label">
                   <i class="bi bi-card-text"></i>
-                  Identification:
+                  Số CCCD:
                 </div>
                 <div class="detail-value">{{ safeSelectedCustomer.identification || 'Chưa cung cấp' }}</div>
               </div>
@@ -727,20 +773,49 @@ const safeSelectedCustomer = computed(() => {
           
           <div class="form-group">
             <label class="form-label required">Email</label>
-            <input v-model="modalCustomer.email" type="email" class="form-input" :class="{'error': modalErrors.email}" placeholder="Nhập địa chỉ email">
-            <div v-if="modalErrors.email" class="form-error">{{ modalErrors.email }}</div>
+            <input v-model="modalCustomer.email" type="email" class="form-input" :class="{'error': modalErrors.email}" placeholder="Nhập địa chỉ email" @input="validateEmail" @blur="validateEmail">
+            <div v-if="modalErrors.email" class="form-error">
+              <i class="bi bi-exclamation-circle"></i>
+              {{ modalErrors.email }}
+            </div>
           </div>
           
           <div class="form-group">
             <label class="form-label required">Số điện thoại</label>
-            <input v-model="modalCustomer.phone" type="tel" class="form-input" :class="{'error': modalErrors.phone}" placeholder="Nhập số điện thoại" @input="validatePhone">
-            <div v-if="modalErrors.phone" class="form-error">{{ modalErrors.phone }}</div>
+            <input 
+              v-model="modalCustomer.phone" 
+              type="text" 
+              class="form-input" 
+              :class="{'error': modalErrors.phone}" 
+              placeholder="Nhập số điện thoại (10 chữ số)" 
+              @input="validatePhone" 
+              maxlength="10"
+              inputmode="numeric"
+              pattern="[0-9]*"
+            >
+            <div v-if="modalErrors.phone" class="form-error">
+              <i class="bi bi-exclamation-circle"></i>
+              {{ modalErrors.phone }}
+            </div>
           </div>
           
           <div class="form-group">
             <label class="form-label">CCCD/CMND</label>
-            <input v-model="modalCustomer.identification" type="text" class="form-input" :class="{'error': modalErrors.identification}" placeholder="Nhập số CCCD (nếu có)">
-            <div v-if="modalErrors.identification" class="form-error">{{ modalErrors.identification }}</div>
+            <input 
+              v-model="modalCustomer.identification" 
+              type="text" 
+              class="form-input" 
+              :class="{'error': modalErrors.identification}" 
+              placeholder="Nhập số CCCD (12 chữ số)" 
+              @input="validateIdentification" 
+              maxlength="12"
+              inputmode="numeric"
+              pattern="[0-9]*"
+            >
+            <div v-if="modalErrors.identification" class="form-error">
+              <i class="bi bi-exclamation-circle"></i>
+              {{ modalErrors.identification }}
+            </div>
           </div>
           
           <div class="form-group">
@@ -781,7 +856,7 @@ const safeSelectedCustomer = computed(() => {
         </div>
       </div>
     </div>
-    
+
     <!-- Delete Customer Modal -->
     <div v-if="showDeleteModal" class="modal-overlay">
       <div class="modal-container modal-confirm">
@@ -831,9 +906,9 @@ const safeSelectedCustomer = computed(() => {
         notification.type === 'success' ? 'success' : 'error'
       ]"
     >
-      <i :class="[
+      <i :class="
         notification.type === 'success' ? 'bi bi-check-circle-fill' : 'bi bi-exclamation-circle-fill'
-      ]"></i>
+      "></i>
       <span>{{ notification.message }}</span>
     </div>
   </AppLayout>
