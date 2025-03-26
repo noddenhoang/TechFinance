@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, computed, onMounted, nextTick } from 'vue';
+import { ref, reactive, computed, onMounted, nextTick, watch } from 'vue';
 import AppLayout from '../../components/layouts/AppLayout.vue';
 import { financialReports } from '../../api/financialReports';
 
@@ -11,12 +11,6 @@ const filters = reactive({
 
 // Current year for filter selection
 const currentYear = new Date().getFullYear();
-
-// Change year and reload data
-const changeYear = (year) => {
-  filters.year = year;
-  loadData();
-};
 
 // Data state
 const reportData = ref(null);
@@ -33,7 +27,8 @@ const loadData = async () => {
   
   try {
     // Always load yearly data for the enhanced UI
-      reportData.value = await financialReports.getYearlyReport(filters.year);
+    const response = await financialReports.getYearlyReport(filters.year);
+    reportData.value = response;
   } catch (err) {
     console.error('Error loading report data:', err);
     error.value = 'Không thể tải dữ liệu báo cáo. Vui lòng thử lại sau.';
@@ -44,13 +39,17 @@ const loadData = async () => {
 
 // Calculate total amount by summing all category amounts
 const calculateTotalAmount = () => {
-  if (!categories.value || !categories.value.length) {
-    return 0;
-  }
+  if (!reportData.value || !Array.isArray(reportData.value)) return 0;
   
-  return categories.value.reduce((total, category) => {
-    return total + (category.actualAmount || 0);
-  }, 0);
+  let totalActual = 0;
+  reportData.value.forEach(month => {
+    const summary = month.summary || {};
+    totalActual += parseFloat(filters.reportType === 'income' 
+      ? (summary.totalIncomeActual || 0) 
+      : (summary.totalExpenseActual || 0));
+  });
+  
+  return totalActual;
 };
 
 // Get monthly amount for a specific category and month
@@ -200,6 +199,11 @@ const years = computed(() => {
   return yearList;
 });
 
+// Watch for changes in filters and reload data
+watch(filters, () => {
+  loadData();
+}, { deep: true });
+
 // Lifecycle
 onMounted(() => {
   // Đảm bảo DOM đã render trước khi tải dữ liệu
@@ -212,7 +216,6 @@ onMounted(() => {
 <template>
   <AppLayout>
     <template #page-title>Báo cáo Theo Danh mục</template>
-    
     <div class="content-container">
       <h2>Báo cáo chi tiết theo danh mục</h2>
       <p>Trang này hiển thị báo cáo thu nhập và chi phí theo từng danh mục.</p>
@@ -232,6 +235,7 @@ onMounted(() => {
                 <option v-for="year in years" :key="year" :value="year">{{ year }}</option>
               </select>
             </div>
+            
             <div class="form-group">
               <label class="form-label">Loại báo cáo</label>
               <select v-model="filters.reportType" class="form-select" @change="loadData">
@@ -249,7 +253,7 @@ onMounted(() => {
         <div class="report-header">
           <h2 class="report-title">
             {{ filters.reportType === 'income' ? 'Báo cáo Thu Nhập Theo Danh Mục' : 'Báo cáo Chi Phí Theo Danh Mục' }}
-          </h2>
+          </h2> 
         </div>
         
         <!-- Tab navigation -->
@@ -262,6 +266,7 @@ onMounted(() => {
             >
               Tháng
             </button>
+            
             <button 
               class="tab-button" 
               :class="{ active: activeTab === 'quarter' }"
