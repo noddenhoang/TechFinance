@@ -16,6 +16,16 @@ const routes = [
     component: () => import('../views/DashboardView.vue'),
     meta: { requiresAuth: true }
   },
+  // Gemini AI Route
+  {
+    path: '/gemini',
+    name: 'Gemini',
+    component: () => import('../views/GeminiView.vue'),
+    meta: { 
+      requiresAuth: true,
+      title: 'Trợ lý AI Tài Chính'
+    }
+  },
   // Master Data Routes
   {
     path: '/income-categories',

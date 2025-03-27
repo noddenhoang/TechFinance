@@ -39,6 +39,12 @@ const toggleSidebar = () => {
                 <span class="nav-text">Dashboard</span>
               </router-link>
             </li>
+            <li class="nav-item">
+              <router-link to="/gemini" class="nav-link">
+                <span class="nav-icon">🤖</span>
+                <span class="nav-text">Trợ lý AI Tài Chính</span>
+              </router-link>
+            </li>
           </ul>
         </div>
 

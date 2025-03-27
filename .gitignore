@@ -1,0 +1,50 @@
+# General
+.DS_Store
+*.log
+*.gz
+tmp/
+*.tmp
+*.swp
+*.swo
+
+# Thư mục
+node_modules/
+dist/
+build/
+.gradle/
+target/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.iws
+.classpath
+.project
+.settings/
+
+# Môi trường
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+backend/.env
+frontend/.env
+/frontend/.env.*
+
+# Dependencies
+package-lock.json
+yarn.lock
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Gradle
+*.gradle
+gradlew
+gradlew.bat
+gradle/
+
+# Compiled class files
+*.class 
