@@ -211,7 +211,7 @@ onMounted(() => {
     <template #page-title>Báo cáo thuế</template>
     
     <div class="content-box">
-      <h2>8.8. Báo cáo thuế</h2>
+      <h2>Báo cáo thuế</h2>
       
       <!-- Filter container -->
       <div class="filter-container">

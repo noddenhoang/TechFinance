@@ -109,6 +109,8 @@ const receivableChart = ref(null)
 const payableChart = ref(null)
 const receivableMonthlyChart = ref(null)
 const payableMonthlyChart = ref(null)
+const receivablePercent = ref(null)
+const payablePercent = ref(null)
 
 // Chart instances
 let receivableChartInstance = null
@@ -143,6 +145,28 @@ const renderReceivableDonutChart = () => {
     
     console.log('Creating receivable donut chart with data:', [reportData.totalReceived, reportData.totalPending]);
     
+    // Setup event listeners for the chart
+    const setupChartEvents = (chart) => {
+      chart.canvas.addEventListener('mousemove', (e) => {
+        const elements = chart.getElementsAtEventForMode(e, 'nearest', { intersect: true }, false);
+        if (elements.length > 0 && receivablePercent.value) {
+          // If hovering over a chart element, hide the percentage
+          receivablePercent.value.classList.add('chart-percent-hidden');
+        } else if (receivablePercent.value) {
+          // Otherwise show it
+          receivablePercent.value.classList.remove('chart-percent-hidden');
+        }
+      });
+      
+      // Make sure percentage is shown when mouse leaves chart
+      chart.canvas.addEventListener('mouseout', () => {
+        if (receivablePercent.value) {
+          receivablePercent.value.classList.remove('chart-percent-hidden');
+        }
+      });
+    };
+    
+    // Create the chart
     receivableChartInstance = new Chart(ctx, {
       type: 'doughnut',
       data: {
@@ -160,17 +184,48 @@ const renderReceivableDonutChart = () => {
             display: false
           },
           tooltip: {
+            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+            titleColor: '#334155',
+            bodyColor: '#334155',
+            padding: 12,
+            borderColor: '#e5e7eb',
+            borderWidth: 1,
+            z: 10,
             callbacks: {
               label: (context) => {
                 return `${context.label}: ${formatCurrency(context.raw)}`;
+              }
+            },
+            events: ['mousemove', 'mouseout', 'click', 'touchstart', 'touchmove'],
+            afterShow: (chart) => {
+              if (receivablePercent.value) {
+                receivablePercent.value.classList.add('chart-percent-hidden');
+              }
+            },
+            afterHide: (chart) => {
+              if (receivablePercent.value) {
+                receivablePercent.value.classList.remove('chart-percent-hidden');
               }
             }
           }
         },
         responsive: true,
-        maintainAspectRatio: false
+        maintainAspectRatio: false,
+        // Add event hooks for tooltip show/hide
+        onHover: (event, elements) => {
+          if (receivablePercent.value) {
+            if (elements && elements.length > 0) {
+              receivablePercent.value.classList.add('chart-percent-hidden');
+            } else {
+              receivablePercent.value.classList.remove('chart-percent-hidden');
+            }
+          }
+        }
       }
     });
+    
+    // Setup event listeners
+    setupChartEvents(receivableChartInstance);
     
     console.log('Receivable donut chart created successfully');
   } catch (err) {
@@ -197,6 +252,28 @@ const renderPayableDonutChart = () => {
     
     console.log('Creating payable donut chart with data:', [reportData.totalPaid, reportData.totalUnpaid]);
     
+    // Setup event listeners for the chart
+    const setupChartEvents = (chart) => {
+      chart.canvas.addEventListener('mousemove', (e) => {
+        const elements = chart.getElementsAtEventForMode(e, 'nearest', { intersect: true }, false);
+        if (elements.length > 0 && payablePercent.value) {
+          // If hovering over a chart element, hide the percentage
+          payablePercent.value.classList.add('chart-percent-hidden');
+        } else if (payablePercent.value) {
+          // Otherwise show it
+          payablePercent.value.classList.remove('chart-percent-hidden');
+        }
+      });
+      
+      // Make sure percentage is shown when mouse leaves chart
+      chart.canvas.addEventListener('mouseout', () => {
+        if (payablePercent.value) {
+          payablePercent.value.classList.remove('chart-percent-hidden');
+        }
+      });
+    };
+    
+    // Create the chart with options
     payableChartInstance = new Chart(ctx, {
       type: 'doughnut',
       data: {
@@ -214,17 +291,48 @@ const renderPayableDonutChart = () => {
             display: false
           },
           tooltip: {
+            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+            titleColor: '#334155',
+            bodyColor: '#334155',
+            padding: 12,
+            borderColor: '#e5e7eb',
+            borderWidth: 1,
+            z: 10, // Higher than the chart-percent z-index
             callbacks: {
               label: (context) => {
                 return `${context.label}: ${formatCurrency(context.raw)}`;
+              }
+            },
+            events: ['mousemove', 'mouseout', 'click', 'touchstart', 'touchmove'],
+            afterShow: (chart) => {
+              if (payablePercent.value) {
+                payablePercent.value.classList.add('chart-percent-hidden');
+              }
+            },
+            afterHide: (chart) => {
+              if (payablePercent.value) {
+                payablePercent.value.classList.remove('chart-percent-hidden');
               }
             }
           }
         },
         responsive: true,
-        maintainAspectRatio: false
+        maintainAspectRatio: false,
+        // Add event hooks for tooltip show/hide
+        onHover: (event, elements) => {
+          if (payablePercent.value) {
+            if (elements && elements.length > 0) {
+              payablePercent.value.classList.add('chart-percent-hidden');
+            } else {
+              payablePercent.value.classList.remove('chart-percent-hidden');
+            }
+          }
+        }
       }
     });
+    
+    // Setup event listeners
+    setupChartEvents(payableChartInstance);
     
     console.log('Payable donut chart created successfully');
   } catch (err) {
@@ -532,7 +640,7 @@ onMounted(() => {
                     <h6 class="chart-title">% Thanh toán đã nhận</h6>
                     <div class="chart-container" style="position: relative; height: 200px; width: 100%">
                       <canvas ref="receivableChart"></canvas>
-                      <div class="chart-percent">{{ calculateReceivedPercentage() }}%</div>
+                      <div ref="receivablePercent" class="chart-percent">{{ calculateReceivedPercentage() }}%</div>
                     </div>
                   </div>
                 </div>
@@ -592,7 +700,7 @@ onMounted(() => {
                     <h6 class="chart-title">% Chi phí đã thanh toán</h6>
                     <div class="chart-container" style="position: relative; height: 200px; width: 100%">
                       <canvas ref="payableChart"></canvas>
-                      <div class="chart-percent">{{ calculatePaidPercentage() }}%</div>
+                      <div ref="payablePercent" class="chart-percent">{{ calculatePaidPercentage() }}%</div>
                     </div>
                   </div>
                 </div>
@@ -705,6 +813,12 @@ onMounted(() => {
   transform: translate(-50%, -50%);
   font-size: 1.5rem;
   font-weight: bold;
+  transition: opacity 0.2s ease; /* Add smooth transition */
+}
+
+/* Add this new class to hide the percentage with animation */
+.chart-percent-hidden {
+  opacity: 0;
 }
 
 table th {
