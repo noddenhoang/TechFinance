@@ -45,4 +45,7 @@ public interface IncomeTransactionRepository extends JpaRepository<IncomeTransac
     
     @Query("SELECT it FROM IncomeTransaction it WHERE YEAR(it.transactionDate) = :year AND MONTH(it.transactionDate) = :month ORDER BY it.transactionDate DESC")
     List<IncomeTransaction> findByYearAndMonth(@Param("year") int year, @Param("month") int month);
+    
+    Page<IncomeTransaction> findByTransactionDateBetweenOrderByTransactionDateDesc(
+        LocalDate startDate, LocalDate endDate, Pageable pageable);
 }

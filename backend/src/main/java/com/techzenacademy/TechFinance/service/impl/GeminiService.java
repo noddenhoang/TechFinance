@@ -1,16 +1,26 @@
 package com.techzenacademy.TechFinance.service.impl;
 
 import java.io.IOException;
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.math.BigDecimal;
+import java.time.YearMonth;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Collections;
+import java.util.Comparator;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -32,11 +42,15 @@ import com.techzenacademy.TechFinance.entity.ChatConversation;
 import com.techzenacademy.TechFinance.entity.ChatMessage;
 import com.techzenacademy.TechFinance.entity.MonthlyReport;
 import com.techzenacademy.TechFinance.entity.User;
+import com.techzenacademy.TechFinance.entity.IncomeTransaction;
+import com.techzenacademy.TechFinance.entity.ExpenseTransaction;
 import com.techzenacademy.TechFinance.repository.ChatConversationRepository;
 import com.techzenacademy.TechFinance.repository.ChatMessageRepository;
 import com.techzenacademy.TechFinance.repository.MonthlyReportRepository;
 import com.techzenacademy.TechFinance.repository.PredictionInputRepository;
 import com.techzenacademy.TechFinance.repository.UserRepository;
+import com.techzenacademy.TechFinance.repository.IncomeTransactionRepository;
+import com.techzenacademy.TechFinance.repository.ExpenseTransactionRepository;
 import com.techzenacademy.TechFinance.service.impl.gemini.PromptTemplateService;
 
 import jakarta.annotation.PostConstruct;
@@ -70,6 +84,12 @@ public class GeminiService {
     
     @Autowired
     private MonthlyReportRepository monthlyReportRepository;
+    
+    @Autowired
+    private IncomeTransactionRepository incomeTransactionRepository;
+    
+    @Autowired
+    private ExpenseTransactionRepository expenseTransactionRepository;
     
     @Value("${gemini.api.key}")
     private String apiKey;
@@ -226,6 +246,37 @@ public class GeminiService {
                 historicalData = sb.toString();
             }
             
+            // Get historical income transaction data
+            List<IncomeTransaction> incomeTransactions = incomeTransactionRepository
+                .findAll(Sort.by(Sort.Direction.DESC, "transactionDate"));
+            
+            if (!incomeTransactions.isEmpty()) {
+                StringBuilder sb = new StringBuilder();
+                sb.append("Historical income transaction data:\n");
+                
+                // Group transactions by month for more useful trend analysis
+                Map<YearMonth, BigDecimal> monthlyIncome = new HashMap<>();
+                
+                for (IncomeTransaction transaction : incomeTransactions) {
+                    YearMonth yearMonth = YearMonth.from(transaction.getTransactionDate());
+                    BigDecimal currentTotal = monthlyIncome.getOrDefault(yearMonth, BigDecimal.ZERO);
+                    monthlyIncome.put(yearMonth, currentTotal.add(transaction.getAmount()));
+                }
+                
+                // Sort by date and format
+                List<YearMonth> sortedMonths = new ArrayList<>(monthlyIncome.keySet());
+                Collections.sort(sortedMonths);
+                
+                for (YearMonth month : sortedMonths) {
+                    sb.append(month.format(DateTimeFormatter.ofPattern("MM/yyyy")))
+                      .append(": ")
+                      .append(monthlyIncome.get(month))
+                      .append("\n");
+                }
+                
+                historicalData = sb.toString();
+            }
+            
             // Create prompt with the universal template
             String userInput = "Predict revenue for " + input.getTimePeriod() + " based on the following business information: " + input.getBusinessData();
             String prompt = promptTemplateService.createPrompt(userInput, historicalData);
@@ -256,10 +307,107 @@ public class GeminiService {
     private String getRelevantDataForUser(User user, String userQuery) {
         StringBuilder data = new StringBuilder();
         
-        // Add monthly reports data
+        // Determine how many transactions to fetch based on query content
+        int limit = 20; // Default limit
+        if (userQuery.toLowerCase().contains("detailed") || 
+            userQuery.toLowerCase().contains("all transactions") ||
+            userQuery.toLowerCase().contains("comprehensive")) {
+            limit = 50; // More data for detailed requests
+        }
+        
+        // Determine date range - default to last 3 months if not specified
+        LocalDate endDate = LocalDate.now();
+        LocalDate startDate = endDate.minusMonths(3);
+        
+        // Look for time-related keywords in the query
+        if (userQuery.toLowerCase().contains("year") || 
+            userQuery.toLowerCase().contains("annual") || 
+            userQuery.toLowerCase().contains("yearly")) {
+            startDate = endDate.minusYears(1);
+        } else if (userQuery.toLowerCase().contains("month") || 
+                  userQuery.toLowerCase().contains("monthly")) {
+            startDate = endDate.minusMonths(1);
+        }
+        
+        // Fetch income transactions
+        Page<IncomeTransaction> incomeTransactions = incomeTransactionRepository.findByTransactionDateBetweenOrderByTransactionDateDesc(
+            startDate, endDate, PageRequest.of(0, limit));
+        
+        // Fetch expense transactions
+        Page<ExpenseTransaction> expenseTransactions = expenseTransactionRepository.findByTransactionDateBetweenOrderByTransactionDateDesc(
+            startDate, endDate, PageRequest.of(0, limit));
+            
+        // Add income transactions data
+        if (incomeTransactions.hasContent()) {
+            data.append("Income Transactions:\n");
+            for (IncomeTransaction transaction : incomeTransactions.getContent()) {
+                data.append(transaction.getTransactionDate())
+                    .append(" | Category: ").append(transaction.getCategory().getName())
+                    .append(" | Amount: ").append(transaction.getAmount())
+                    .append(" | Status: ").append(transaction.getPaymentStatus().getValue());
+                
+                if (transaction.getCustomer() != null) {
+                    data.append(" | Customer: ").append(transaction.getCustomer().getName());
+                }
+                
+                if (transaction.getDescription() != null && !transaction.getDescription().isEmpty()) {
+                    data.append(" | Note: ").append(transaction.getDescription());
+                }
+                
+                data.append("\n");
+            }
+            data.append("\n");
+        }
+        
+        // Add expense transactions data
+        if (expenseTransactions.hasContent()) {
+            data.append("Expense Transactions:\n");
+            for (ExpenseTransaction transaction : expenseTransactions.getContent()) {
+                data.append(transaction.getTransactionDate())
+                    .append(" | Category: ").append(transaction.getCategory().getName())
+                    .append(" | Amount: ").append(transaction.getAmount())
+                    .append(" | Status: ").append(transaction.getPaymentStatus().getValue());
+                
+                if (transaction.getSupplier() != null) {
+                    data.append(" | Supplier: ").append(transaction.getSupplier().getName());
+                }
+                
+                if (transaction.getDescription() != null && !transaction.getDescription().isEmpty()) {
+                    data.append(" | Note: ").append(transaction.getDescription());
+                }
+                
+                data.append("\n");
+            }
+            data.append("\n");
+        }
+        
+        // Calculate summary statistics
+        if (incomeTransactions.hasContent() || expenseTransactions.hasContent()) {
+            data.append("Summary Statistics:\n");
+            
+            // Total income
+            BigDecimal totalIncome = BigDecimal.ZERO;
+            for (IncomeTransaction transaction : incomeTransactions.getContent()) {
+                totalIncome = totalIncome.add(transaction.getAmount());
+            }
+            data.append("Total Income: ").append(totalIncome).append("\n");
+            
+            // Total expense
+            BigDecimal totalExpense = BigDecimal.ZERO;
+            for (ExpenseTransaction transaction : expenseTransactions.getContent()) {
+                totalExpense = totalExpense.add(transaction.getAmount());
+            }
+            data.append("Total Expense: ").append(totalExpense).append("\n");
+            
+            // Net profit
+            BigDecimal netProfit = totalIncome.subtract(totalExpense);
+            data.append("Net Profit: ").append(netProfit).append("\n");
+        }
+        
+        // Add monthly reports data for context (keeping this for historical trends)
         List<MonthlyReport> reports = monthlyReportRepository.findByUserIdOrderByReportDateDesc(user.getId().longValue());
         if (!reports.isEmpty()) {
-            data.append("Monthly reports:\n");
+            data.append("\nMonthly Reports:\n");
             for (MonthlyReport report : reports) {
                 data.append(report.getReportDate().format(DateTimeFormatter.ofPattern("MM/yyyy")))
                     .append(" - Revenue: ").append(report.getRevenue())
@@ -555,4 +703,4 @@ public class GeminiService {
         responseDTO.setError(errorMessage);
         return responseDTO;
     }
-} 
+}

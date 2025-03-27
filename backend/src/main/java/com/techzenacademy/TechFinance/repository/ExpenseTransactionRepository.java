@@ -44,4 +44,7 @@ public interface ExpenseTransactionRepository extends JpaRepository<ExpenseTrans
     
     @Query("SELECT et FROM ExpenseTransaction et WHERE YEAR(et.transactionDate) = :year AND MONTH(et.transactionDate) = :month ORDER BY et.transactionDate DESC")
     List<ExpenseTransaction> findByYearAndMonth(@Param("year") int year, @Param("month") int month);
+    
+    Page<ExpenseTransaction> findByTransactionDateBetweenOrderByTransactionDateDesc(
+        LocalDate startDate, LocalDate endDate, Pageable pageable);
 }
