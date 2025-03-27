@@ -1,7 +1,7 @@
 <template>
   <div class="gemini-chat">
     <div class="chat-header">
-      <h3>AI Assistant</h3>
+      <h3>Trợ lý AI</h3>
     </div>
     
     <div class="chat-messages" ref="chatContainer">
@@ -41,8 +41,8 @@
     <div class="chat-input">
       <textarea 
         v-model="messageContent" 
-        @keyup.enter="sendMessage" 
-        placeholder="Type your message..."
+        @keydown.enter.prevent="handleEnterKey"
+        placeholder="Nhập tin nhắn của bạn..."
         :disabled="isLoading"
         rows="1"
         ref="messageInput"
@@ -52,8 +52,9 @@
         @click="sendMessage" 
         :disabled="isLoading || !messageContent.trim()"
         class="send-btn"
+        title="Gửi tin nhắn"
       >
-        <i class="fas fa-paper-plane"></i>
+        <i class="bi bi-send-fill"></i>
       </button>
     </div>
   </div>
@@ -183,19 +184,33 @@ export default {
       try {
         this.isLoading = true;
         const response = await geminiService.getConversation(id);
+        console.log('Raw response from server:', response.data);
         
         if (response.data && response.data.messages) {
-          this.messages = response.data.messages.map(msg => ({
-            content: msg.content,
-            sender: msg.isUser ? 'user' : 'ai',
-            timestamp: new Date(msg.timestamp)
-          }));
+          console.log('Messages from server:', response.data.messages);
+          
+          this.messages = response.data.messages.map(msg => {
+            // Sử dụng hàm determineIfUserMessage để xác định người gửi
+            const isUserMessage = this.determineIfUserMessage(msg);
+            
+            // Log thông tin chi tiết để debug
+            console.log(`Message: "${msg.content?.substring(0, 20)}..." | isUser: ${msg.isUser} | Result: ${isUserMessage ? 'USER' : 'AI'}`);
+            console.log('Full message object:', JSON.stringify(msg, null, 2));
+            
+            return {
+              content: msg.content || '',
+              sender: isUserMessage ? 'user' : 'ai',
+              timestamp: new Date(msg.timestamp || new Date())
+            };
+          });
+          
+          console.log('Processed messages:', this.messages);
           this.conversationLoaded = true;
         } else {
           this.resetChat();
         }
       } catch (error) {
-        console.error('Error loading conversation:', error);
+        console.error('Lỗi khi tải hội thoại:', error);
         
         // Extract the error message to display to the user
         let errorMessage = 'Không thể tải cuộc hội thoại. Vui lòng thử lại sau.';
@@ -221,30 +236,34 @@ export default {
       }
     },
     
-    async sendMessage(event) {
-      // Prevent form submission on Enter if Shift key is pressed
-      if (event && event.type === 'keyup' && event.shiftKey) {
-        return;
+    handleEnterKey(event) {
+      // Allow new line with shift+enter
+      if (event.shiftKey) {
+        return true;
       }
       
-      // Prevent default behavior for Enter key (without Shift)
-      if (event && event.type === 'keyup' && !event.shiftKey) {
-        event.preventDefault();
-      }
-      
+      // Send message with just enter
+      this.sendMessage();
+      return false;
+    },
+    
+    async sendMessage() {
       if (!this.messageContent.trim()) return;
       
-      // Add user message to the list
+      // Store message content before clearing
+      const sentContent = this.messageContent.trim();
+      
+      // Create user message
       const userMessage = {
-        content: this.messageContent,
+        content: sentContent,
         sender: 'user',
         timestamp: new Date()
       };
       
+      // Add user message to the list
       this.messages.push(userMessage);
       
       // Clear input
-      const sentContent = this.messageContent;
       this.messageContent = '';
       this.autoResizeTextarea();
       
@@ -262,6 +281,8 @@ export default {
           );
         }
         
+        console.log('Send message response:', response.data);
+        
         // Update conversation ID if needed
         if (response.data.conversationId && !this.conversationId) {
           this.$emit('conversation-loaded', response.data.conversationId);
@@ -270,21 +291,42 @@ export default {
         
         // Update messages from response
         if (response.data.messages && response.data.messages.length > 0) {
-          this.messages = response.data.messages.map(msg => ({
-            content: msg.content,
-            sender: msg.isUser ? 'user' : 'ai',
-            timestamp: new Date(msg.timestamp)
-          }));
+          console.log('Got messages response:', response.data.messages);
+          
+          // Create a new array to hold processed messages
+          let newMessages = [];
+          
+          // Process messages from the server
+          for (const msg of response.data.messages) {
+            // Sử dụng hàm determineIfUserMessage để xác định người gửi
+            const isUserMessage = this.determineIfUserMessage(msg);
+            
+            console.log(`Processing message: "${msg.content?.substring(0, 20)}..." | isUser: ${msg.isUser} | Result: ${isUserMessage ? 'USER' : 'AI'}`);
+            console.log('Full message object:', JSON.stringify(msg, null, 2));
+            
+            newMessages.push({
+              content: msg.content || '',
+              sender: isUserMessage ? 'user' : 'ai',
+              timestamp: new Date(msg.timestamp || new Date())
+            });
+          }
+          
+          // Replace messages array with processed messages
+          this.messages = newMessages;
+          console.log('Updated messages array:', this.messages);
         } else if (response.data.response) {
-          // If API only returns a single response
-          this.messages.push({
-            content: response.data.response,
-            sender: 'ai',
-            timestamp: new Date()
-          });
+          // If API only returns a single response, keep the user message and add AI response
+          this.messages = [
+            userMessage,
+            {
+              content: response.data.response,
+              sender: 'ai',
+              timestamp: new Date()
+            }
+          ];
         }
       } catch (error) {
-        console.error('Error sending message:', error);
+        console.error('Lỗi khi gửi tin nhắn:', error);
         
         // Extract the error message from the response if available
         let errorMessage = 'Có lỗi xảy ra khi xử lý yêu cầu của bạn. Vui lòng thử lại sau.';
@@ -344,6 +386,78 @@ export default {
       
       // Add scrollbar if exceeds maximum height
       textarea.style.overflowY = textarea.scrollHeight > maxHeight ? 'auto' : 'hidden';
+    },
+
+    determineIfUserMessage(message) {
+      // Null/undefined check
+      if (!message) return false;
+      
+      console.log('Checking if message is from user:', message);
+      
+      // Kiểm tra thuộc tính isUser trực tiếp
+      if (typeof message.isUser !== 'undefined') {
+        // Boolean check
+        if (typeof message.isUser === 'boolean') {
+          return message.isUser;
+        }
+        
+        // String check
+        if (typeof message.isUser === 'string') {
+          const lowerValue = message.isUser.toLowerCase();
+          return lowerValue === 'true' || lowerValue === 'user' || lowerValue === '1';
+        }
+        
+        // Number check
+        if (typeof message.isUser === 'number') {
+          return message.isUser === 1;
+        }
+      }
+      
+      // Kiểm tra thuộc tính sender nếu có
+      if (typeof message.sender !== 'undefined') {
+        if (typeof message.sender === 'string') {
+          const upperSender = message.sender.toUpperCase();
+          return upperSender === 'USER' || upperSender === 'NGƯỜI DÙNG' || upperSender === 'U';
+        }
+      }
+      
+      // Kiểm tra các thuộc tính khác có thể xác định người gửi
+      if (message.messageType) {
+        const messageType = typeof message.messageType === 'string' 
+          ? message.messageType.toLowerCase() 
+          : message.messageType;
+        
+        return messageType === 'user' || messageType === 'người dùng' || messageType === 'human';
+      }
+      
+      // Kiểm tra nếu có thuộc tính role trong tin nhắn
+      if (message.role) {
+        const role = typeof message.role === 'string' 
+          ? message.role.toLowerCase() 
+          : message.role;
+        
+        return role === 'user' || role === 'human' || role === 'người dùng';
+      }
+      
+      // Kiểm tra nội dung tin nhắn - các tin nhắn chào thường đến từ AI, không phải người dùng
+      if (message.content) {
+        const content = message.content.toLowerCase();
+        // Các tin nhắn chào thường đến từ AI, không phải người dùng
+        if (content.includes('xin chào') || 
+            content.includes('chào mừng') || 
+            content.includes('tôi là trợ lý') || 
+            content.includes('tôi có thể giúp')) {
+          return false;
+        }
+        
+        // Tin nhắn ngắn, một từ thường là từ người dùng
+        if (content.split(' ').length <= 3 && content.length < 20) {
+          return true;
+        }
+      }
+      
+      // Mặc định là tin nhắn AI nếu không thể xác định
+      return false;
     }
   }
 };
@@ -485,7 +599,7 @@ textarea:focus {
 
 .send-btn {
   margin-left: 10px;
-  padding: 12px;
+  padding: 0;
   background-color: #4285f4;
   color: white;
   border: none;
@@ -498,6 +612,11 @@ textarea:focus {
   align-items: center;
   justify-content: center;
   transition: background-color 0.2s;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.send-btn i {
+  font-size: 16px;
 }
 
 .send-btn:hover {

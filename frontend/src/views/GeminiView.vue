@@ -1,18 +1,18 @@
 <template>
   <div class="gemini-view">
     <div class="header">
-      <h1 class="title">Gemini AI</h1>
+      <h1 class="title">Trợ lý AI</h1>
       <router-link to="/" class="back-button">
-        <i class="fas fa-arrow-left"></i> Back
+        <i class="bi bi-arrow-left"></i> Quay lại
       </router-link>
     </div>
 
     <div class="main-content">
       <div class="sidebar" v-if="showSidebar">
         <div class="sidebar-header">
-          <h3>Chat History</h3>
+          <h3>Lịch sử hội thoại</h3>
           <button class="new-chat-btn" @click="startNewChat">
-            <i class="fas fa-plus"></i> New Chat
+            <i class="bi bi-plus-lg"></i> Tạo mới
           </button>
         </div>
         <div class="conversation-list">
@@ -24,53 +24,32 @@
             @click="loadConversation(convo.id)"
           >
             <div class="conversation-info">
-              <div class="conversation-title">{{ convo.firstMessage || 'New conversation' }}</div>
+              <div class="conversation-title">{{ convo.firstMessage || 'Hội thoại mới' }}</div>
               <div class="conversation-meta">
-                <span class="message-count">{{ convo.messageCount }} messages</span>
+                <span class="message-count">{{ convo.messageCount }} tin nhắn</span>
                 <span class="date">{{ formatDate(convo.createdAt) }}</span>
               </div>
             </div>
             <button class="delete-btn" @click.stop="deleteConversation(convo.id)">
-              <i class="fas fa-trash"></i>
+              <i class="bi bi-trash"></i>
             </button>
           </div>
           <div v-if="conversations.length === 0" class="no-conversations">
-            No conversations yet
+            Chưa có hội thoại nào
           </div>
         </div>
       </div>
 
       <div class="chat-container">
-        <div class="tab-buttons">
-          <button
-            class="tab-button"
-            :class="{ active: activeTab === 'general' }"
-            @click="activeTab = 'general'"
-          >
-            General Q&A
-          </button>
-          <button
-            class="tab-button"
-            :class="{ active: activeTab === 'revenue' }"
-            @click="activeTab = 'revenue'"
-          >
-            Revenue Prediction
-          </button>
+        <div class="chat-header-controls">
           <button class="toggle-sidebar-btn" @click="toggleSidebar">
-            <i :class="showSidebar ? 'fas fa-chevron-left' : 'fas fa-history'"></i>
+            <i :class="showSidebar ? 'bi bi-chevron-left' : 'bi bi-clock-history'"></i>
           </button>
         </div>
 
         <div class="chat-area">
           <GeminiChat
-            v-if="activeTab === 'general'"
             chatType="general"
-            :conversationId="selectedConversationId"
-            @conversation-loaded="onConversationLoaded"
-          />
-          <GeminiChat
-            v-if="activeTab === 'revenue'"
-            chatType="revenue"
             :conversationId="selectedConversationId"
             @conversation-loaded="onConversationLoaded"
           />
@@ -92,7 +71,6 @@ export default {
   },
   data() {
     return {
-      activeTab: 'general',
       conversations: [],
       showSidebar: true,
       selectedConversationId: null,
@@ -113,7 +91,7 @@ export default {
         const response = await geminiService.getConversations();
         this.conversations = response.data;
       } catch (error) {
-        console.error('Error fetching conversations:', error);
+        console.error('Lỗi khi tải hội thoại:', error);
       } finally {
         this.loading = false;
       }
@@ -124,7 +102,7 @@ export default {
     },
     
     async deleteConversation(id) {
-      if (!confirm('Are you sure you want to delete this conversation?')) {
+      if (!confirm('Bạn có chắc chắn muốn xoá hội thoại này không?')) {
         return;
       }
       
@@ -137,7 +115,7 @@ export default {
           this.selectedConversationId = null;
         }
       } catch (error) {
-        console.error('Error deleting conversation:', error);
+        console.error('Lỗi khi xoá hội thoại:', error);
       }
     },
     
@@ -148,10 +126,12 @@ export default {
     formatDate(dateString) {
       if (!dateString) return '';
       const date = new Date(dateString);
-      return format(date, 'MM/dd/yyyy HH:mm');
+      return format(date, 'dd/MM/yyyy HH:mm');
     },
     
     onConversationLoaded(conversationId) {
+      console.log('Conversation loaded with ID:', conversationId);
+      
       if (conversationId && !this.selectedConversationId) {
         this.selectedConversationId = conversationId;
         this.fetchConversations(); // Update the list
@@ -236,20 +216,27 @@ export default {
 }
 
 .new-chat-btn {
-  background-color: var(--primary-color);
+  background-color: #28a745;
   color: white;
   border: none;
   border-radius: 5px;
-  padding: 8px;
+  padding: 8px 12px;
   cursor: pointer;
   font-size: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-weight: 500;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.new-chat-btn:hover {
+  background-color: #218838;
 }
 
 .new-chat-btn i {
   margin-right: 8px;
+  font-size: 12px;
 }
 
 .conversation-list {
@@ -329,34 +316,14 @@ export default {
   background-color: white;
 }
 
-.tab-buttons {
+.chat-header-controls {
   display: flex;
+  justify-content: flex-end;
+  padding: 10px 15px;
   border-bottom: 1px solid #e0e0e0;
-  padding: 0 15px;
-  position: relative;
-}
-
-.tab-button {
-  padding: 15px 20px;
-  background: none;
-  border: none;
-  border-bottom: 3px solid transparent;
-  font-weight: 500;
-  color: #6c757d;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.tab-button.active {
-  color: var(--primary-color);
-  border-bottom-color: var(--primary-color);
 }
 
 .toggle-sidebar-btn {
-  position: absolute;
-  right: 15px;
-  top: 50%;
-  transform: translateY(-50%);
   background: none;
   border: none;
   color: #6c757d;
