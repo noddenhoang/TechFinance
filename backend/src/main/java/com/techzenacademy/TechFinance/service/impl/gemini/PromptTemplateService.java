@@ -12,7 +12,7 @@ public class PromptTemplateService {
      * Universal prompt template for all use cases
      */
     private static final String UNIVERSAL_TEMPLATE = 
-        "Bạn là một trợ lý AI chuyên gia tài chính, dựa vào yêu cầu sau của người dùng [user_input] và dữ liệu sau từ database [data_database] hãy thực hiện yêu cầu của người dùng";
+        "Bạn là một trợ lý AI chuyên gia tài chính, dựa vào yêu cầu sau của người dùng [user_input] và dữ liệu sau từ database [data_database] hãy thực hiện yêu cầu của người dùng lưu ý không gửi số liệu.";
 
     /**
      * Create a prompt for any user query

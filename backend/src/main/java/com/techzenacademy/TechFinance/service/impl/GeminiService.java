@@ -551,7 +551,10 @@ public class GeminiService {
                 GeminiMessageDTO dto = new GeminiMessageDTO();
                 dto.setId(message.getId() != null ? message.getId().longValue() : 0L);
                 dto.setContent(message.getContent() != null ? message.getContent() : "");
-                dto.setUser(message.getSender() == ChatMessage.MessageSender.USER);
+                
+                // Fix: Make sure we use consistent naming - "isUser" instead of "setUser"
+                // This is a potential source of confusion between isUser() and setIsUser()
+                dto.setIsUser(message.getSender() == ChatMessage.MessageSender.USER);
                 
                 // Handle timestamp safely with correct type
                 if (message.getTimestamp() != null) {
