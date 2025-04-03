@@ -29,7 +29,6 @@ target/
 .env.development
 .env.test
 .env.production
-backend/.env
 frontend/.env
 /frontend/.env.*
 
@@ -47,4 +46,5 @@ gradlew.bat
 gradle/
 
 # Compiled class files
-*.class 
+*.class
+.vscode
