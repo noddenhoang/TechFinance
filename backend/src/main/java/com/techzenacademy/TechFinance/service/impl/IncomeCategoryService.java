@@ -10,6 +10,9 @@ import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import com.techzenacademy.TechFinance.dto.page.PageResponse;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -29,11 +32,11 @@ public class IncomeCategoryService {
                 .collect(Collectors.toList());
     }
     
-    public List<IncomeCategoryDTO> getActiveCategories() {
-        return incomeCategoryRepository.findByIsActiveTrue().stream()
-                .map(this::mapToDTO)
-                .collect(Collectors.toList());
-    }
+    // public List<IncomeCategoryDTO> getActiveCategories() {
+    //     return incomeCategoryRepository.findByIsActiveTrue().stream()
+    //             .map(this::mapToDTO)
+    //             .collect(Collectors.toList());
+    // }
     
     public IncomeCategoryDTO getCategoryById(Integer id) {
         return incomeCategoryRepository.findById(id)
@@ -60,27 +63,35 @@ public class IncomeCategoryService {
         IncomeCategory category = incomeCategoryRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Income category not found with id: " + id));
         
-        // Check if name is changed and if new name already exists
-        if (!category.getName().equals(request.getName()) && 
-                incomeCategoryRepository.existsByName(request.getName())) {
-            throw new IllegalArgumentException("A category with this name already exists");
+        // Only update name if provided and different from current value
+        if (request.getName() != null && !request.getName().isEmpty()) {
+            // Check if name is changed and if new name already exists
+            if (!category.getName().equals(request.getName()) && 
+                    incomeCategoryRepository.existsByName(request.getName())) {
+                throw new IllegalArgumentException("A category with this name already exists");
+            }
+            category.setName(request.getName());
         }
         
-        category.setName(request.getName());
-        category.setDescription(request.getDescription());
-        category.setIsActive(request.getIsActive());
+        // Only update description if provided
+        if (request.getDescription() != null) {
+            category.setDescription(request.getDescription());
+        }
+        
+        // Only update active status if provided
+        if (request.getIsActive() != null) {
+            category.setIsActive(request.getIsActive());
+        }
         
         IncomeCategory updatedCategory = incomeCategoryRepository.save(category);
         return mapToDTO(updatedCategory);
     }
     
     public void deleteCategory(Integer id) {
-        IncomeCategory category = incomeCategoryRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Income category not found with id: " + id));
-        
-        // Soft delete - just mark as inactive
-        category.setIsActive(false);
-        incomeCategoryRepository.save(category);
+        if (!incomeCategoryRepository.existsById(id)) {
+            throw new EntityNotFoundException("Income category not found with id: " + id);
+        }
+        incomeCategoryRepository.deleteById(id);
     }
     
     private IncomeCategoryDTO mapToDTO(IncomeCategory category) {
@@ -96,5 +107,65 @@ public class IncomeCategoryService {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         return userRepository.findByUsername(username)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
+    }
+    
+    /**
+     * Filter income categories based on optional criteria
+     * If all parameters are null, returns all categories
+     * 
+     * @param name Filter by name containing this string (case-insensitive)
+     * @param isActive Filter by active status
+     * @return List of filtered income categories
+     */
+    public List<IncomeCategoryDTO> filterCategories(String name, Boolean isActive) {
+        // If all filter parameters are null, return all categories
+        if (name == null && isActive == null) {
+            return getAllCategories();
+        }
+
+        List<IncomeCategory> categories = incomeCategoryRepository.findAll();
+        
+        return categories.stream()
+                .filter(category -> {
+                    // Filter by name if provided - using simple LIKE pattern
+                    if (name != null && !name.isEmpty()) {
+                        if (category.getName() == null) {
+                            return false;
+                        }
+                        // Simple case-insensitive LIKE operation
+                        if (!category.getName().toLowerCase().contains(name.toLowerCase())) {
+                            return false;
+                        }
+                    }
+                    
+                    // Filter by isActive if provided
+                    if (isActive != null && 
+                        (category.getIsActive() == null || 
+                        !category.getIsActive().equals(isActive))) {
+                        return false;
+                    }
+                    
+                    return true;
+                })
+                .map(this::mapToDTO)
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * Filter income categories based on optional criteria with pagination
+     * 
+     * @param name Filter by name containing this string (case-insensitive)
+     * @param isActive Filter by active status
+     * @param pageable Pagination information
+     * @return PageResponse of filtered income categories
+     */
+    public PageResponse<IncomeCategoryDTO> getPagedCategories(String name, Boolean isActive, Pageable pageable) {
+        Page<IncomeCategory> categoryPage = incomeCategoryRepository.findWithFilters(name, isActive, pageable);
+        
+        // Map the contents using the existing mapToDTO method
+        Page<IncomeCategoryDTO> dtoPage = categoryPage.map(this::mapToDTO);
+        
+        // Return the custom page response
+        return new PageResponse<>(dtoPage);
     }
 }

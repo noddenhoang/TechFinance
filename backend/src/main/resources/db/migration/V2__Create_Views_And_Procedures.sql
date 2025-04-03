@@ -3,8 +3,8 @@ CREATE VIEW monthly_income_view AS
 SELECT 
     YEAR(transaction_date) AS year,
     MONTH(transaction_date) AS month,
-    SUM(CASE WHEN payment_status = 'Đã nhận' THEN amount ELSE 0 END) AS received_amount,
-    SUM(CASE WHEN payment_status = 'Chưa nhận' THEN amount ELSE 0 END) AS pending_amount,
+    SUM(CASE WHEN payment_status = 'RECEIVED' THEN amount ELSE 0 END) AS received_amount,
+    SUM(CASE WHEN payment_status = 'PENDING' THEN amount ELSE 0 END) AS pending_amount,
     SUM(amount) AS total_amount
 FROM income_transactions
 GROUP BY YEAR(transaction_date), MONTH(transaction_date);
@@ -14,8 +14,8 @@ CREATE VIEW monthly_expense_view AS
 SELECT 
     YEAR(transaction_date) AS year,
     MONTH(transaction_date) AS month,
-    SUM(CASE WHEN payment_status = 'Đã trả' THEN amount ELSE 0 END) AS paid_amount,
-    SUM(CASE WHEN payment_status = 'Chưa trả' THEN amount ELSE 0 END) AS pending_amount,
+    SUM(CASE WHEN payment_status = 'PAID' THEN amount ELSE 0 END) AS paid_amount,
+    SUM(CASE WHEN payment_status = 'UNPAID' THEN amount ELSE 0 END) AS pending_amount,
     SUM(amount) AS total_amount
 FROM expense_transactions
 GROUP BY YEAR(transaction_date), MONTH(transaction_date);
@@ -81,8 +81,8 @@ BEGIN
         COALESCE((SELECT SUM(amount) FROM expense_transactions WHERE YEAR(transaction_date) = p_year AND MONTH(transaction_date) = p_month), 0) AS total_expense,
         COALESCE((SELECT SUM(amount) FROM income_transactions WHERE YEAR(transaction_date) = p_year AND MONTH(transaction_date) = p_month), 0) -
         COALESCE((SELECT SUM(amount) FROM expense_transactions WHERE YEAR(transaction_date) = p_year AND MONTH(transaction_date) = p_month), 0) AS profit_loss,
-        COALESCE((SELECT SUM(amount) FROM income_transactions WHERE YEAR(transaction_date) = p_year AND MONTH(transaction_date) = p_month AND payment_status = 'Chưa nhận'), 0) AS receivables,
-        COALESCE((SELECT SUM(amount) FROM expense_transactions WHERE YEAR(transaction_date) = p_year AND MONTH(transaction_date) = p_month AND payment_status = 'Chưa trả'), 0) AS payables;
+        COALESCE((SELECT SUM(amount) FROM income_transactions WHERE YEAR(transaction_date) = p_year AND MONTH(transaction_date) = p_month AND payment_status = 'PENDING'), 0) AS receivables,
+        COALESCE((SELECT SUM(amount) FROM expense_transactions WHERE YEAR(transaction_date) = p_year AND MONTH(transaction_date) = p_month AND payment_status = 'UNPAID'), 0) AS payables;
 END //
 DELIMITER ;
 
@@ -213,4 +213,4 @@ BEGIN
     WHERE 
         ip.year = p_target_year AND ip.month = p_target_month;
 END //
-DELIMITER ; 
+DELIMITER ;

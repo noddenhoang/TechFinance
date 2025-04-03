@@ -1,7 +1,7 @@
 package com.techzenacademy.TechFinance.service.impl;
 
-import com.techzenacademy.TechFinance.entity.User;
-import com.techzenacademy.TechFinance.repository.UserRepository;
+import java.util.Collections;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -9,8 +9,15 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
-import java.util.Collections;
+import com.techzenacademy.TechFinance.entity.User;
+import com.techzenacademy.TechFinance.repository.UserRepository;
 
+/**
+ * Legacy UserDetailsService implementation that is kept for backward compatibility.
+ * The CustomUserDetailsService is now marked as @Primary and should be used by default.
+ * 
+ * This implementation can be removed if it causes conflicts or is no longer needed.
+ */
 @Service
 public class UserDetailsServiceImpl implements UserDetailsService {
 
